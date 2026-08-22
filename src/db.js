@@ -62,6 +62,43 @@ db.exec(`
 
   -- Seed default profile if not exists
   INSERT OR IGNORE INTO user_profile (id) VALUES (1);
+
+  -- Seed default AI settings if not exist
+  INSERT OR IGNORE INTO settings (key, value) VALUES 
+    ('ai_host', 'https://api.openai.com/v1'),
+    ('ai_api_key', ''),
+    ('ai_model_text', 'gpt-4o-mini'),
+    ('ai_model_vision', 'gpt-4o-mini');
 `);
 
+// Helpers for settings key-value
+function getSetting(key, fallback = '') {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+  return row ? row.value : fallback;
+}
+
+function getAllSettings() {
+  const rows = db.prepare('SELECT key, value FROM settings').all();
+  const res = {
+    ai_host: 'https://api.openai.com/v1',
+    ai_api_key: '',
+    ai_model_text: 'gpt-4o-mini',
+    ai_model_vision: 'gpt-4o-mini'
+  };
+  rows.forEach(r => {
+    res[r.key] = r.value;
+  });
+  return res;
+}
+
+function setSetting(key, value) {
+  db.prepare(`
+    INSERT INTO settings (key, value) VALUES (?, ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  `).run(key, String(value || ''));
+}
+
 module.exports = db;
+module.exports.getSetting = getSetting;
+module.exports.getAllSettings = getAllSettings;
+module.exports.setSetting = setSetting;
