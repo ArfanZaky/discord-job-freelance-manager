@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jobs & Freelance Manager | Cloudverra</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdfa',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+
+  <!-- Top Navbar -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center text-slate-950 shadow-lg shadow-teal-500/20 font-bold text-xl">
+          <i class="fa-solid fa-briefcase"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-none tracking-tight flex items-center gap-2">
+            Job & Freelance Manager
+            <span class="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-teal-500/10 text-teal-400 border border-teal-500/20">AI Powered</span>
+          </h1>
+          <p class="text-xs text-slate-400 mt-0.5">Automated Discord Ingestion & Auto-Apply with 9Router</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button id="btn-sync-discord" onclick="triggerSync()" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-medium border border-slate-700 transition flex items-center gap-2">
+          <i class="fa-brands fa-discord text-indigo-400"></i>
+          <span>Sync Discord Now</span>
+        </button>
+        <button onclick="openProfileModal()" class="px-3.5 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-sm font-medium transition flex items-center gap-2 shadow-lg shadow-teal-600/20">
+          <i class="fa-solid fa-user-gear"></i>
+          <span>Applicant Profile</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
+
+    <!-- Metrics Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Listings</p>
+          <h3 id="stat-total" class="text-2xl font-bold mt-1 text-white">0</h3>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+          <i class="fa-solid fa-list-check text-xl"></i>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Full-time Jobs</p>
+          <h3 id="stat-jobs" class="text-2xl font-bold mt-1 text-teal-400">0</h3>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
+          <i class="fa-solid fa-building text-xl"></i>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Freelance Projects</p>
+          <h3 id="stat-freelance" class="text-2xl font-bold mt-1 text-amber-400">0</h3>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+          <i class="fa-solid fa-laptop-code text-xl"></i>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Applied / Success</p>
+          <h3 id="stat-applied" class="text-2xl font-bold mt-1 text-emerald-400">0</h3>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+          <i class="fa-solid fa-paper-plane text-xl"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Bar & Search -->
+    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div class="flex items-center gap-2 flex-wrap w-full md:w-auto">
+        <button onclick="setFilterType('all')" id="tab-all" class="px-4 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white transition">All Listings</button>
+        <button onclick="setFilterType('job')" id="tab-job" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Jobs</button>
+        <button onclick="setFilterType('freelance')" id="tab-freelance" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Freelance</button>
+        <button onclick="setFilterStatus('applied')" id="tab-applied" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Applied</button>
+      </div>
+
+      <div class="w-full md:w-80 relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+        <input type="text" id="search-input" onkeyup="handleSearch()" placeholder="Search title, skills, company..." 
+          class="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-teal-500 transition">
+      </div>
+    </div>
+
+    <!-- Listings Container -->
+    <div id="listing-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <!-- Dynamic Job Cards will be inserted here -->
+    </div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="hidden text-center py-16 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">
+      <i class="fa-solid fa-inbox text-4xl text-slate-600 mb-3"></i>
+      <h4 class="text-base font-semibold text-slate-300">No Listings Found</h4>
+      <p class="text-xs text-slate-500 mt-1">Try syncing with Discord channels or adjust your filter query.</p>
+    </div>
+
+  </main>
+
+  <!-- Job Detail & Apply Modal -->
+  <div id="apply-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <!-- Modal Header -->
+      <div class="p-6 border-b border-slate-800 flex items-start justify-between">
+        <div>
+          <span id="modal-type-badge" class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-teal-500/10 text-teal-400 border border-teal-500/20">Job</span>
+          <h2 id="modal-title" class="text-xl font-bold text-white mt-2">Job Title</h2>
+          <p id="modal-company" class="text-sm text-slate-400 mt-0.5">Company Name • Location</p>
+        </div>
+        <button onclick="closeApplyModal()" class="text-slate-400 hover:text-white text-xl p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4 text-sm">
+        <div>
+          <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider">Salary / Budget</h4>
+          <p id="modal-budget" class="text-teal-400 font-semibold mt-0.5">Not disclosed</p>
+        </div>
+
+        <div>
+          <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider">Required Skills</h4>
+          <p id="modal-skills" class="text-slate-300 mt-0.5">JavaScript, Node.js</p>
+        </div>
+
+        <div>
+          <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider">Description</h4>
+          <div id="modal-description" class="text-slate-300 mt-1 bg-slate-950 p-4 rounded-xl border border-slate-800 leading-relaxed max-h-40 overflow-y-auto whitespace-pre-wrap"></div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider">AI Generated Cover Letter / Proposal</h4>
+            <button onclick="regenerateAIProposal()" class="text-xs text-teal-400 hover:underline flex items-center gap-1">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Regenerate via 9Router
+            </button>
+          </div>
+          <textarea id="modal-cover-letter" rows="6" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 text-sm focus:outline-none focus:border-teal-500 custom-scrollbar" placeholder="Generating AI cover letter..."></textarea>
+        </div>
+
+        <div id="modal-log-section" class="hidden">
+          <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider mb-1">Automation Execution Log</h4>
+          <pre id="modal-log" class="bg-black/80 text-teal-400 font-mono text-xs p-3 rounded-xl overflow-x-auto max-h-32 border border-slate-800"></pre>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-6 border-t border-slate-800 bg-slate-900/50 flex items-center justify-between">
+        <a id="modal-external-link" href="#" target="_blank" class="text-xs text-slate-400 hover:text-teal-400 flex items-center gap-1.5">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Original Page
+        </a>
+        <div class="flex items-center gap-3">
+          <button onclick="closeApplyModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-medium text-slate-300">Close</button>
+          <button id="btn-execute-apply" onclick="executeAutoApply()" class="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-sm font-bold text-white shadow-lg shadow-teal-600/30 flex items-center gap-2">
+            <i class="fa-solid fa-paper-plane"></i>
+            <span>Auto-Apply Now</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Settings Modal -->
+  <div id="profile-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-user-circle text-teal-400"></i> Applicant Auto-Apply Profile
+        </h3>
+        <button onclick="closeProfileModal()" class="text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="profile-form" onsubmit="saveProfile(event)" class="space-y-3 text-sm">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Full Name</label>
+            <input type="text" id="prof-name" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500" required>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Email</label>
+            <input type="email" id="prof-email" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500" required>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Phone / WhatsApp</label>
+            <input type="text" id="prof-phone" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-400">Experience</label>
+            <input type="text" id="prof-exp" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold text-slate-400">LinkedIn & Portfolio URLs</label>
+          <div class="grid grid-cols-2 gap-3 mt-1">
+            <input type="url" id="prof-linkedin" placeholder="LinkedIn URL" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500">
+            <input type="url" id="prof-portfolio" placeholder="Portfolio / Website URL" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold text-slate-400">Key Skills (Comma Separated)</label>
+          <input type="text" id="prof-skills" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500">
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold text-slate-400">Bio Summary</label>
+          <textarea id="prof-bio" rows="3" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-teal-500 custom-scrollbar"></textarea>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-3">
+          <button type="button" onclick="closeProfileModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium">Cancel</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-lg shadow-teal-600/30">Save Profile</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let allItems = [];
+    let currentFilterType = 'all';
+    let currentFilterStatus = 'all';
+    let activeItem = null;
+
+    async function loadData() {
+      try {
+        const res = await fetch('/api/items');
+        const data = await res.json();
+        allItems = data.items || [];
+        updateStats();
+        renderListings();
+      } catch (e) {
+        console.error('Failed to load items:', e);
+      }
+    }
+
+    function updateStats() {
+      document.getElementById('stat-total').innerText = allItems.length;
+      document.getElementById('stat-jobs').innerText = allItems.filter(i => i.source_type === 'job').length;
+      document.getElementById('stat-freelance').innerText = allItems.filter(i => i.source_type === 'freelance').length;
+      document.getElementById('stat-applied').innerText = allItems.filter(i => i.status === 'applied').length;
+    }
+
+    function setFilterType(type) {
+      currentFilterType = type;
+      currentFilterStatus = 'all';
+      updateTabStyles();
+      renderListings();
+    }
+
+    function setFilterStatus(status) {
+      currentFilterStatus = status;
+      currentFilterType = 'all';
+      updateTabStyles();
+      renderListings();
+    }
+
+    function updateTabStyles() {
+      ['all', 'job', 'freelance'].forEach(t => {
+        const el = document.getElementById(`tab-${t}`);
+        if (el) {
+          if (currentFilterType === t && currentFilterStatus === 'all') {
+            el.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white transition';
+          } else {
+            el.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition';
+          }
+        }
+      });
+
+      const appEl = document.getElementById('tab-applied');
+      if (appEl) {
+        if (currentFilterStatus === 'applied') {
+          appEl.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white transition';
+        } else {
+          appEl.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition';
+        }
+      }
+    }
+
+    function handleSearch() {
+      renderListings();
+    }
+
+    function renderListings() {
+      const q = document.getElementById('search-input').value.toLowerCase();
+      const container = document.getElementById('listing-container');
+      const emptyState = document.getElementById('empty-state');
+
+      let filtered = allItems.filter(item => {
+        if (currentFilterType !== 'all' && item.source_type !== currentFilterType) return false;
+        if (currentFilterStatus !== 'all' && item.status !== currentFilterStatus) return false;
+        if (q) {
+          const matchTitle = item.title?.toLowerCase().includes(q);
+          const matchCompany = item.company?.toLowerCase().includes(q);
+          const matchSkills = item.skills?.toLowerCase().includes(q);
+          const matchDesc = item.description?.toLowerCase().includes(q);
+          return matchTitle || matchCompany || matchSkills || matchDesc;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      container.innerHTML = filtered.map(item => {
+        const isJob = item.source_type === 'job';
+        const typeBadgeClass = isJob ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+        
+        let statusBadge = '';
+        if (item.status === 'applied') {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1"><i class="fa-solid fa-check"></i> Applied</span>`;
+        } else if (item.status === 'applying') {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse"><i class="fa-solid fa-spinner fa-spin"></i> In Progress</span>`;
+        } else if (item.status === 'failed') {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">Failed</span>`;
+        }
+
+        return `
+          <div class="bg-slate-900 border border-slate-800 hover:border-slate-700 transition rounded-2xl p-5 flex flex-col justify-between group shadow-sm hover:shadow-xl">
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${typeBadgeClass}">
+                  ${item.source_type}
+                </span>
+                ${statusBadge}
+              </div>
+
+              <div>
+                <h3 class="font-bold text-base text-white group-hover:text-teal-400 transition line-clamp-2 leading-snug">
+                  ${item.title}
+                </h3>
+                <p class="text-xs text-slate-400 mt-1 flex items-center gap-1.5 truncate">
+                  <i class="fa-regular fa-building text-slate-500"></i> ${item.company || 'Direct Client'} 
+                  ${item.location ? `• <i class="fa-solid fa-location-dot text-slate-500"></i> ${item.location}` : ''}
+                </p>
+              </div>
+
+              ${item.budget_salary ? `
+                <div class="bg-slate-950/60 border border-slate-800/80 px-3 py-1.5 rounded-xl text-xs font-semibold text-teal-400 flex items-center gap-1.5">
+                  <i class="fa-solid fa-money-bill-wave"></i> ${item.budget_salary}
+                </div>
+              ` : ''}
+
+              ${item.skills ? `
+                <div class="flex flex-wrap gap-1">
+                  ${item.skills.split(',').slice(0, 4).map(s => `
+                    <span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-medium">${s.replace(/[`']/g, '').trim()}</span>
+                  `).join('')}
+                </div>
+              ` : ''}
+
+              <p class="text-xs text-slate-400 line-clamp-3 leading-relaxed">
+                ${item.description || 'No description available'}
+              </p>
+            </div>
+
+            <div class="pt-4 mt-4 border-t border-slate-800 flex items-center justify-between gap-2">
+              <a href="${item.url || '#'}" target="_blank" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition" title="Open Link">
+                <i class="fa-solid fa-external-link text-sm"></i>
+              </a>
+              <button onclick="openApplyModal('${item.id}')" class="flex-1 py-2 px-4 rounded-xl bg-teal-600/10 hover:bg-teal-600 text-teal-400 hover:text-white text-xs font-bold border border-teal-500/20 hover:border-teal-600 transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-bolt"></i>
+                <span>${item.status === 'applied' ? 'Re-Apply / Edit' : 'Apply with AI'}</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function triggerSync() {
+      const btn = document.getElementById('btn-sync-discord');
+      const origHtml = btn.innerHTML;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-teal-400"></i> <span>Syncing...</span>`;
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/sync', { method: 'POST' });
+        const data = await res.json();
+        alert(`Discord Sync Complete! Found ${data.new_count || 0} new opportunities.`);
+        await loadData();
+      } catch (err) {
+        alert('Sync error: ' + err.message);
+      } finally {
+        btn.innerHTML = origHtml;
+        btn.disabled = false;
+      }
+    }
+
+    async function openApplyModal(itemId) {
+      activeItem = allItems.find(i => i.id === itemId);
+      if (!activeItem) return;
+
+      document.getElementById('modal-type-badge').innerText = activeItem.source_type;
+      document.getElementById('modal-title').innerText = activeItem.title;
+      document.getElementById('modal-company').innerText = `${activeItem.company || 'Direct'} • ${activeItem.location || 'Remote'}`;
+      document.getElementById('modal-budget').innerText = activeItem.budget_salary || 'Not disclosed';
+      document.getElementById('modal-skills').innerText = activeItem.skills || 'Not specified';
+      document.getElementById('modal-description').innerText = activeItem.description || 'No description provided';
+      document.getElementById('modal-external-link').href = activeItem.url || '#';
+
+      const coverText = document.getElementById('modal-cover-letter');
+      coverText.value = activeItem.ai_cover_letter || '';
+
+      const logSection = document.getElementById('modal-log-section');
+      if (activeItem.apply_log) {
+        document.getElementById('modal-log').innerText = activeItem.apply_log;
+        logSection.classList.remove('hidden');
+      } else {
+        logSection.classList.add('hidden');
+      }
+
+      document.getElementById('apply-modal').classList.remove('hidden');
+
+      if (!activeItem.ai_cover_letter) {
+        coverText.value = 'Generating personalized AI proposal via 9Router...';
+        try {
+          const res = await fetch(`/api/generate-cover-letter`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_id: activeItem.id })
+          });
+          const data = await res.json();
+          coverText.value = data.cover_letter || '';
+          activeItem.ai_cover_letter = data.cover_letter;
+        } catch (e) {
+          coverText.value = 'Failed to generate proposal: ' + e.message;
+        }
+      }
+    }
+
+    function closeApplyModal() {
+      document.getElementById('apply-modal').classList.add('hidden');
+      activeItem = null;
+    }
+
+    async function regenerateAIProposal() {
+      if (!activeItem) return;
+      const coverText = document.getElementById('modal-cover-letter');
+      coverText.value = 'Regenerating AI proposal via 9Router...';
+      try {
+        const res = await fetch(`/api/generate-cover-letter`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ item_id: activeItem.id })
+        });
+        const data = await res.json();
+        coverText.value = data.cover_letter || '';
+        activeItem.ai_cover_letter = data.cover_letter;
+      } catch (e) {
+        coverText.value = 'Failed: ' + e.message;
+      }
+    }
+
+    async function executeAutoApply() {
+      if (!activeItem) return;
+      const btn = document.getElementById('btn-execute-apply');
+      const coverLetter = document.getElementById('modal-cover-letter').value;
+      const origHtml = btn.innerHTML;
+
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Applying...`;
+      btn.disabled = true;
+
+      const logSection = document.getElementById('modal-log-section');
+      const logEl = document.getElementById('modal-log');
+      logSection.classList.remove('hidden');
+      logEl.innerText = 'Initiating automation engine & browser worker...\n';
+
+      try {
+        const res = await fetch('/api/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            item_id: activeItem.id,
+            cover_letter: coverLetter
+          })
+        });
+        const result = await res.json();
+
+        logEl.innerText = result.log || 'Done.';
+        if (result.success) {
+          alert('Auto-Apply succeeded! Log updated.');
+        } else {
+          alert('Application note: ' + (result.message || 'Check log details.'));
+        }
+        await loadData();
+      } catch (err) {
+        logEl.innerText += `\nError: ${err.message}`;
+        alert('Execution failed: ' + err.message);
+      } finally {
+        btn.innerHTML = origHtml;
+        btn.disabled = false;
+      }
+    }
+
+    // Profile Modal Handlers
+    async function openProfileModal() {
+      try {
+        const res = await fetch('/api/profile');
+        const data = await res.json();
+        const p = data.profile || {};
+        document.getElementById('prof-name').value = p.full_name || '';
+        document.getElementById('prof-email').value = p.email || '';
+        document.getElementById('prof-phone').value = p.phone || '';
+        document.getElementById('prof-exp').value = p.experience_years || '';
+        document.getElementById('prof-linkedin').value = p.linkedin || '';
+        document.getElementById('prof-portfolio').value = p.portfolio || '';
+        document.getElementById('prof-skills').value = p.skills || '';
+        document.getElementById('prof-bio').value = p.bio || '';
+        document.getElementById('profile-modal').classList.remove('hidden');
+      } catch (e) {
+        alert('Failed loading profile: ' + e.message);
+      }
+    }
+
+    function closeProfileModal() {
+      document.getElementById('profile-modal').classList.add('hidden');
+    }
+
+    async function saveProfile(e) {
+      e.preventDefault();
+      const body = {
+        full_name: document.getElementById('prof-name').value,
+        email: document.getElementById('prof-email').value,
+        phone: document.getElementById('prof-phone').value,
+        experience_years: document.getElementById('prof-exp').value,
+        linkedin: document.getElementById('prof-linkedin').value,
+        portfolio: document.getElementById('prof-portfolio').value,
+        skills: document.getElementById('prof-skills').value,
+        bio: document.getElementById('prof-bio').value
+      };
+
+      try {
+        const res = await fetch('/api/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        alert('Profile saved successfully!');
+        closeProfileModal();
+      } catch (err) {
+        alert('Failed saving profile: ' + err.message);
+      }
+    }
+
+    // Auto poll updates every 30s
+    loadData();
+    setInterval(loadData, 30000);
+  </script>
+</body>
+</html>
