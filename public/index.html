@@ -45,15 +45,11 @@
             Job & Freelance Manager
             <span class="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-teal-500/10 text-teal-400 border border-teal-500/20">AI Ready</span>
           </h1>
-          <p class="text-xs text-slate-400 mt-0.5">Discord Ingestion • Auto-Apply • Dynamic AI Settings</p>
+          <p class="text-xs text-slate-400 mt-0.5">Automated Aggregator • AI Proposal & Auto-Apply</p>
         </div>
       </div>
 
       <div class="flex items-center gap-2 sm:gap-3">
-        <button id="btn-sync-discord" onclick="triggerSync()" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-medium border border-slate-700 transition flex items-center gap-2">
-          <i class="fa-brands fa-discord text-indigo-400"></i>
-          <span class="hidden sm:inline">Sync Discord</span>
-        </button>
         <button onclick="openSettingsModal()" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-medium border border-slate-700 transition flex items-center gap-2">
           <i class="fa-solid fa-gear text-teal-400"></i>
           <span class="hidden sm:inline">AI Settings</span>
@@ -115,10 +111,23 @@
     <!-- Filter Bar & Search -->
     <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row gap-4 items-center justify-between">
       <div class="flex items-center gap-2 flex-wrap w-full md:w-auto">
-        <button onclick="setFilterType('all')" id="tab-all" class="px-4 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white transition">All Listings</button>
+        <button onclick="setFilterType('all')" id="tab-all" class="px-4 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white transition">All</button>
         <button onclick="setFilterType('job')" id="tab-job" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Jobs</button>
         <button onclick="setFilterType('freelance')" id="tab-freelance" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Freelance</button>
         <button onclick="setFilterStatus('applied')" id="tab-applied" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Applied</button>
+
+        <!-- Source Platform Filter Dropdown -->
+        <div class="relative inline-block ml-1">
+          <select id="source-filter" onchange="handleSourceChange(this.value)" class="bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-teal-500 font-medium">
+            <option value="all">🌐 All Sources</option>
+            <option value="JobStreet">JobStreet</option>
+            <option value="Glints">Glints</option>
+            <option value="Kalibrr">Kalibrr</option>
+            <option value="Dealls">Dealls</option>
+            <option value="Projects.co.id">Projects.co.id</option>
+            <option value="Discord Feed">Other Feeds</option>
+          </select>
+        </div>
       </div>
 
       <div class="w-full md:w-80 relative">
@@ -137,7 +146,7 @@
     <div id="empty-state" class="hidden text-center py-16 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">
       <i class="fa-solid fa-inbox text-4xl text-slate-600 mb-3"></i>
       <h4 class="text-base font-semibold text-slate-300">No Listings Found</h4>
-      <p class="text-xs text-slate-500 mt-1">Try syncing with Discord channels or adjust your filter query.</p>
+      <p class="text-xs text-slate-500 mt-1">Adjust your filter options or search keyword.</p>
     </div>
 
   </main>
@@ -148,7 +157,10 @@
       <!-- Modal Header -->
       <div class="p-6 border-b border-slate-800 flex items-start justify-between">
         <div>
-          <span id="modal-type-badge" class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-teal-500/10 text-teal-400 border border-teal-500/20">Job</span>
+          <div class="flex items-center gap-2">
+            <span id="modal-type-badge" class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-teal-500/10 text-teal-400 border border-teal-500/20">Job</span>
+            <span id="modal-source-badge" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-300 border border-slate-700">Source</span>
+          </div>
           <h2 id="modal-title" class="text-xl font-bold text-white mt-2">Job Title</h2>
           <p id="modal-company" class="text-sm text-slate-400 mt-0.5">Company Name • Location</p>
         </div>
@@ -335,6 +347,7 @@
     let allItems = [];
     let currentFilterType = 'all';
     let currentFilterStatus = 'all';
+    let currentFilterSource = 'all';
     let activeItem = null;
 
     async function loadData() {
@@ -343,10 +356,29 @@
         const data = await res.json();
         allItems = data.items || [];
         updateStats();
+        populateSourceDropdown();
         renderListings();
       } catch (e) {
         console.error('Failed to load items:', e);
       }
+    }
+
+    function populateSourceDropdown() {
+      const select = document.getElementById('source-filter');
+      const sources = new Set(allItems.map(i => i.platform_source).filter(Boolean));
+      const current = select.value;
+      
+      let html = '<option value="all">🌐 All Sources</option>';
+      Array.from(sources).sort().forEach(src => {
+        html += `<option value="${src}">${src}</option>`;
+      });
+      select.innerHTML = html;
+      select.value = current;
+    }
+
+    function handleSourceChange(val) {
+      currentFilterSource = val;
+      renderListings();
     }
 
     function updateStats() {
@@ -404,12 +436,14 @@
       let filtered = allItems.filter(item => {
         if (currentFilterType !== 'all' && item.source_type !== currentFilterType) return false;
         if (currentFilterStatus !== 'all' && item.status !== currentFilterStatus) return false;
+        if (currentFilterSource !== 'all' && item.platform_source !== currentFilterSource) return false;
         if (q) {
           const matchTitle = item.title?.toLowerCase().includes(q);
           const matchCompany = item.company?.toLowerCase().includes(q);
           const matchSkills = item.skills?.toLowerCase().includes(q);
           const matchDesc = item.description?.toLowerCase().includes(q);
-          return matchTitle || matchCompany || matchSkills || matchDesc;
+          const matchSource = item.platform_source?.toLowerCase().includes(q);
+          return matchTitle || matchCompany || matchSkills || matchDesc || matchSource;
         }
         return true;
       });
@@ -434,13 +468,20 @@
           statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">Failed</span>`;
         }
 
+        const sourceLabel = item.platform_source || (isJob ? 'Job Board' : 'Projects.co.id');
+
         return `
           <div class="bg-slate-900 border border-slate-800 hover:border-slate-700 transition rounded-2xl p-5 flex flex-col justify-between group shadow-sm hover:shadow-xl">
             <div class="space-y-3">
               <div class="flex items-center justify-between">
-                <span class="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${typeBadgeClass}">
-                  ${item.source_type}
-                </span>
+                <div class="flex items-center gap-1.5">
+                  <span class="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${typeBadgeClass}">
+                    ${item.source_type}
+                  </span>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800/80 text-slate-300 border border-slate-700/60">
+                    ${sourceLabel}
+                  </span>
+                </div>
                 ${statusBadge}
               </div>
 
@@ -487,30 +528,12 @@
       }).join('');
     }
 
-    async function triggerSync() {
-      const btn = document.getElementById('btn-sync-discord');
-      const origHtml = btn.innerHTML;
-      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-teal-400"></i> <span class="hidden sm:inline">Syncing...</span>`;
-      btn.disabled = true;
-
-      try {
-        const res = await fetch('/api/sync', { method: 'POST' });
-        const data = await res.json();
-        alert(`Discord Sync Complete! Found ${data.new_count || 0} new opportunities.`);
-        await loadData();
-      } catch (err) {
-        alert('Sync error: ' + err.message);
-      } finally {
-        btn.innerHTML = origHtml;
-        btn.disabled = false;
-      }
-    }
-
     async function openApplyModal(itemId) {
       activeItem = allItems.find(i => i.id === itemId);
       if (!activeItem) return;
 
       document.getElementById('modal-type-badge').innerText = activeItem.source_type;
+      document.getElementById('modal-source-badge').innerText = activeItem.platform_source || 'Direct';
       document.getElementById('modal-title').innerText = activeItem.title;
       document.getElementById('modal-company').innerText = `${activeItem.company || 'Direct'} • ${activeItem.location || 'Remote'}`;
       document.getElementById('modal-budget').innerText = activeItem.budget_salary || 'Not disclosed';

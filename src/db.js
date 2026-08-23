@@ -28,6 +28,7 @@ db.exec(`
     url TEXT,
     description TEXT,
     raw_payload TEXT,
+    platform_source TEXT DEFAULT 'Discord',
     status TEXT DEFAULT 'new', -- 'new', 'analyzed', 'applying', 'applied', 'failed', 'rejected'
     ai_summary TEXT,
     ai_cover_letter TEXT,

@@ -29,7 +29,6 @@ async function fetchChannelMessages(channelId, limit = 50) {
 
     return res.data || [];
   } catch (err) {
-    // If after query returned 0 or error, fallback to latest
     if (err.response?.status === 400 && cursorRow) {
       const fallbackRes = await axios.get(`https://discord.com/api/v10/channels/${channelId}/messages?limit=${limit}`, {
         headers: { 'Authorization': `Bot ${DISCORD_BOT_TOKEN}` }
@@ -41,8 +40,55 @@ async function fetchChannelMessages(channelId, limit = 50) {
   }
 }
 
+function detectPlatformSource(embed, channelId, fallbackText = '') {
+  const isFreelanceChannel = channelId === '1500464207479701624';
+  
+  // Check footer
+  const footerText = embed?.footer?.text?.toLowerCase() || '';
+  if (footerText.includes('projects.co.id')) return 'Projects.co.id';
+  if (footerText.includes('kalibrr')) return 'Kalibrr';
+  if (footerText.includes('dealls')) return 'Dealls';
+  if (footerText.includes('glints')) return 'Glints';
+  if (footerText.includes('jobstreet')) return 'JobStreet';
+  if (footerText.includes('fastwork')) return 'Fastwork';
+  if (footerText.includes('freelancer')) return 'Freelancer';
+  if (footerText.includes('upwork')) return 'Upwork';
+  if (footerText.includes('sribulancer')) return 'Sribulancer';
+
+  // Check fields
+  if (embed?.fields) {
+    for (const f of embed.fields) {
+      const fn = f.name.toLowerCase();
+      const fv = f.value;
+      if (fn.includes('source') || fn.includes('platform')) {
+        if (/projects\.co\.id/i.test(fv)) return 'Projects.co.id';
+        if (/kalibrr/i.test(fv)) return 'Kalibrr';
+        if (/dealls/i.test(fv)) return 'Dealls';
+        if (/glints/i.test(fv)) return 'Glints';
+        if (/jobstreet/i.test(fv)) return 'JobStreet';
+      }
+    }
+  }
+
+  // Check description & url
+  const fullContent = `${embed?.title || ''} ${embed?.description || ''} ${embed?.url || ''} ${fallbackText}`.toLowerCase();
+  if (fullContent.includes('projects.co.id')) return 'Projects.co.id';
+  if (fullContent.includes('kalibrr')) return 'Kalibrr';
+  if (fullContent.includes('dealls')) return 'Dealls';
+  if (fullContent.includes('glints')) return 'Glints';
+  if (fullContent.includes('jobstreet')) return 'JobStreet';
+  if (fullContent.includes('fastwork')) return 'Fastwork';
+  if (fullContent.includes('freelancer')) return 'Freelancer';
+  if (fullContent.includes('upwork')) return 'Upwork';
+  if (fullContent.includes('sribu')) return 'Sribu';
+  if (fullContent.includes('linkedin')) return 'LinkedIn';
+
+  return isFreelanceChannel ? 'Projects.co.id' : 'Discord Feed';
+}
+
 function parseEmbedToItem(embed, messageId, channelId) {
-  const isFreelance = channelId === '1500464207479701624' || (embed.title && embed.title.includes('Projects.co.id'));
+  const platformSource = detectPlatformSource(embed, channelId);
+  const isFreelance = channelId === '1500464207479701624' || (embed.title && embed.title.includes('Projects.co.id')) || platformSource === 'Projects.co.id';
   const sourceType = isFreelance ? 'freelance' : 'job';
 
   // Extract fields
@@ -59,7 +105,7 @@ function parseEmbedToItem(embed, messageId, channelId) {
     const name = f.name.toLowerCase();
     const val = f.value;
 
-    if (name.includes('company') || name.includes('perusahaan') || name.includes('source')) {
+    if (name.includes('company') || name.includes('perusahaan')) {
       company = val;
     } else if (name.includes('location') || name.includes('lokasi')) {
       location = val;
@@ -103,6 +149,7 @@ function parseEmbedToItem(embed, messageId, channelId) {
   return {
     id,
     source_type: sourceType,
+    platform_source: platformSource,
     channel_id: channelId,
     message_id: messageId,
     title,
@@ -133,10 +180,10 @@ async function syncDiscordChannel(channelId) {
 
   const insertStmt = db.prepare(`
     INSERT OR IGNORE INTO items (
-      id, source_type, channel_id, message_id, title, company, location,
+      id, source_type, platform_source, channel_id, message_id, title, company, location,
       budget_salary, job_type, category, skills, url, description, raw_payload
     ) VALUES (
-      @id, @source_type, @channel_id, @message_id, @title, @company, @location,
+      @id, @source_type, @platform_source, @channel_id, @message_id, @title, @company, @location,
       @budget_salary, @job_type, @category, @skills, @url, @description, @raw_payload
     )
   `);
@@ -164,10 +211,12 @@ async function syncDiscordChannel(channelId) {
       const lines = msg.content.trim().split('\n');
       const title = lines[0].substring(0, 150);
       const urlMatch = msg.content.match(/https?:\/\/[^\s]+/);
+      const platformSource = detectPlatformSource(null, channelId, msg.content);
 
       const res = insertStmt.run({
         id,
         source_type: isFreelance ? 'freelance' : 'job',
+        platform_source: platformSource,
         channel_id: channelId,
         message_id: msg.id,
         title,
@@ -215,5 +264,6 @@ async function syncAllChannels() {
 
 module.exports = {
   syncDiscordChannel,
-  syncAllChannels
+  syncAllChannels,
+  detectPlatformSource
 };
