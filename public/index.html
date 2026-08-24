@@ -52,7 +52,7 @@
       <div class="flex items-center gap-2 sm:gap-3">
         <button onclick="openSettingsModal()" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-medium border border-slate-700 transition flex items-center gap-2">
           <i class="fa-solid fa-gear text-teal-400"></i>
-          <span class="hidden sm:inline">AI Settings</span>
+          <span class="hidden sm:inline">Settings & Accounts</span>
         </button>
         <button onclick="openProfileModal()" class="px-3.5 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-sm font-medium transition flex items-center gap-2 shadow-lg shadow-teal-600/20">
           <i class="fa-solid fa-user-gear"></i>
@@ -211,7 +211,7 @@
           <button onclick="closeApplyModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-medium text-slate-300">Close</button>
           <button id="btn-execute-apply" onclick="executeAutoApply()" class="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-sm font-bold text-white shadow-lg shadow-teal-600/30 flex items-center gap-2">
             <i class="fa-solid fa-paper-plane"></i>
-            <span>Auto-Apply Now</span>
+            <span>Auto-Apply / Submit Bid</span>
           </button>
         </div>
       </div>
@@ -279,52 +279,77 @@
     </div>
   </div>
 
-  <!-- AI Settings Modal -->
+  <!-- Settings & Accounts Modal -->
   <div id="settings-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto custom-scrollbar">
       <div class="flex items-center justify-between border-b border-slate-800 pb-4">
         <div>
           <h3 class="text-lg font-bold text-white flex items-center gap-2">
-            <i class="fa-solid fa-sliders text-teal-400"></i> AI Provider & Model Settings
+            <i class="fa-solid fa-sliders text-teal-400"></i> Settings & Platform Accounts
           </h3>
-          <p class="text-xs text-slate-400 mt-0.5">Konfigurasi host OpenAI-compatible, API key, dan model AI</p>
+          <p class="text-xs text-slate-400 mt-0.5">Konfigurasi AI Provider dan Akun Otomasi Platform</p>
         </div>
         <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>
 
-      <form id="settings-form" onsubmit="saveSettings(event)" class="space-y-3.5 text-sm">
-        <div>
-          <label class="text-xs font-semibold text-slate-400">API Host URL (OpenAI Compatible)</label>
-          <input type="text" id="set-host" placeholder="e.g. https://api.openai.com/v1 atau http://127.0.0.1:20129/v1" 
-            class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-teal-500 font-mono text-xs" required>
-          <span class="text-[11px] text-slate-500 mt-0.5 block">Mendukung OpenAI, 9Router, DeepSeek, Ollama, OpenRouter, Groq, dll.</span>
+      <form id="settings-form" onsubmit="saveSettings(event)" class="space-y-4 text-sm">
+        <!-- AI Settings Section -->
+        <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-3">
+          <h4 class="text-xs font-bold uppercase text-teal-400 tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-robot"></i> AI Engine Configuration
+          </h4>
+          <div>
+            <label class="text-xs font-semibold text-slate-400">API Host URL (OpenAI Compatible)</label>
+            <input type="text" id="set-host" placeholder="e.g. https://api.openai.com/v1 atau http://127.0.0.1:20129/v1" 
+              class="w-full mt-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-200 focus:outline-none focus:border-teal-500 font-mono text-xs" required>
+          </div>
+
+          <div>
+            <label class="text-xs font-semibold text-slate-400">API Key</label>
+            <div class="relative mt-1">
+              <input type="password" id="set-api-key" placeholder="sk-..." 
+                class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-3.5 pr-10 py-2 text-slate-200 focus:outline-none focus:border-teal-500 font-mono text-xs">
+              <button type="button" onclick="toggleApiKeyVisibility()" class="absolute right-3 top-2 text-slate-400 hover:text-white text-sm">
+                <i id="eye-icon" class="fa-solid fa-eye"></i>
+              </button>
+            </div>
+            <span id="key-hint" class="text-[11px] text-slate-500 mt-0.5 block">Kosongkan jika tidak ingin mengubah key yang sudah tersimpan.</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-semibold text-slate-400">Model Text</label>
+              <input type="text" id="set-model-text" placeholder="e.g. gpt-4o-mini" 
+                class="w-full mt-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-200 focus:outline-none focus:border-teal-500 font-mono text-xs" required>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-400">Model Vision</label>
+              <input type="text" id="set-model-vision" placeholder="e.g. gpt-4o-mini" 
+                class="w-full mt-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-200 focus:outline-none focus:border-teal-500 font-mono text-xs" required>
+            </div>
+          </div>
         </div>
 
-        <div>
-          <label class="text-xs font-semibold text-slate-400">API Key</label>
-          <div class="relative mt-1">
-            <input type="password" id="set-api-key" placeholder="sk-..." 
-              class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-3.5 pr-10 py-2.5 text-slate-200 focus:outline-none focus:border-teal-500 font-mono text-xs">
-            <button type="button" onclick="toggleApiKeyVisibility()" class="absolute right-3 top-2.5 text-slate-400 hover:text-white text-sm">
-              <i id="eye-icon" class="fa-solid fa-eye"></i>
-            </button>
+        <!-- Projects.co.id Account Section -->
+        <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-3">
+          <h4 class="text-xs font-bold uppercase text-amber-400 tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-key"></i> Projects.co.id Auto-Bid Account
+          </h4>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-semibold text-slate-400">Username</label>
+              <input type="text" id="set-projectscoid-user" placeholder="AzakyHifdillah" 
+                class="w-full mt-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-200 focus:outline-none focus:border-teal-500 font-mono text-xs">
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-400">Password</label>
+              <input type="password" id="set-projectscoid-pass" placeholder="••••••••" 
+                class="w-full mt-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-200 focus:outline-none focus:border-teal-500 font-mono text-xs">
+            </div>
           </div>
-          <span id="key-hint" class="text-[11px] text-slate-500 mt-0.5 block">Kosongkan jika tidak ingin mengubah key yang sudah tersimpan.</span>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="text-xs font-semibold text-slate-400">Model Text (Cover Letter & Parser)</label>
-            <input type="text" id="set-model-text" placeholder="e.g. gpt-4o-mini, ag/gemini-3-flash" 
-              class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-teal-500 font-mono text-xs" required>
-          </div>
-          <div>
-            <label class="text-xs font-semibold text-slate-400">Model Vision (Captcha Solver)</label>
-            <input type="text" id="set-model-vision" placeholder="e.g. gpt-4o-mini, ag/gemini-3-flash" 
-              class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-teal-500 font-mono text-xs" required>
-          </div>
+          <span class="text-[11px] text-slate-500 block">Digunakan otomatis oleh Playwright Engine untuk login dan submit bid + solve captcha di Projects.co.id.</span>
         </div>
 
         <div id="test-alert" class="hidden p-3 rounded-xl text-xs border"></div>
@@ -629,7 +654,7 @@
 
         logEl.innerText = result.log || 'Done.';
         if (result.success) {
-          alert('Auto-Apply succeeded! Log updated.');
+          alert('Auto-Apply / Bid berhasil dikirim! Log audit diperbarui.');
         } else {
           alert('Application note: ' + (result.message || 'Check log details.'));
         }
@@ -694,7 +719,7 @@
       }
     }
 
-    // AI Settings Modal Handlers
+    // Settings Modal Handlers
     async function openSettingsModal() {
       const alertBox = document.getElementById('test-alert');
       alertBox.classList.add('hidden');
@@ -714,6 +739,14 @@
           } else {
             keyInput.value = '';
             document.getElementById('key-hint').innerText = 'API key belum diatur.';
+          }
+
+          document.getElementById('set-projectscoid-user').value = s.projectscoid_user || 'AzakyHifdillah';
+          const passInput = document.getElementById('set-projectscoid-pass');
+          if (s.has_projectscoid_pass) {
+            passInput.value = '********';
+          } else {
+            passInput.value = '';
           }
         }
         document.getElementById('settings-modal').classList.remove('hidden');
@@ -785,7 +818,9 @@
         ai_host: document.getElementById('set-host').value,
         ai_api_key: document.getElementById('set-api-key').value,
         ai_model_text: document.getElementById('set-model-text').value,
-        ai_model_vision: document.getElementById('set-model-vision').value
+        ai_model_vision: document.getElementById('set-model-vision').value,
+        projectscoid_user: document.getElementById('set-projectscoid-user').value,
+        projectscoid_pass: document.getElementById('set-projectscoid-pass').value
       };
 
       try {

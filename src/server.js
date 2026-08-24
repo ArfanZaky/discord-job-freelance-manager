@@ -80,11 +80,10 @@ app.post('/api/profile', (req, res) => {
   }
 });
 
-// 4. AI Settings API
+// 4. Settings API (AI + Projects.co.id & Platforms)
 app.get('/api/settings', (req, res) => {
   try {
     const settings = getAllSettings();
-    // Mask API key partially for safety in display
     const maskedKey = settings.ai_api_key && settings.ai_api_key.length > 8
       ? `${settings.ai_api_key.substring(0, 4)}...${settings.ai_api_key.substring(settings.ai_api_key.length - 4)}`
       : settings.ai_api_key || '';
@@ -94,7 +93,8 @@ app.get('/api/settings', (req, res) => {
       settings: {
         ...settings,
         has_api_key: Boolean(settings.ai_api_key),
-        masked_api_key: maskedKey
+        masked_api_key: maskedKey,
+        has_projectscoid_pass: Boolean(settings.projectscoid_pass)
       }
     });
   } catch (err) {
@@ -104,7 +104,14 @@ app.get('/api/settings', (req, res) => {
 
 app.post('/api/settings', (req, res) => {
   try {
-    const { ai_host, ai_api_key, ai_model_text, ai_model_vision } = req.body;
+    const {
+      ai_host,
+      ai_api_key,
+      ai_model_text,
+      ai_model_vision,
+      projectscoid_user,
+      projectscoid_pass
+    } = req.body;
     
     if (ai_host !== undefined) setSetting('ai_host', ai_host.trim());
     if (ai_api_key !== undefined && ai_api_key !== '********') {
@@ -112,6 +119,11 @@ app.post('/api/settings', (req, res) => {
     }
     if (ai_model_text !== undefined) setSetting('ai_model_text', ai_model_text.trim());
     if (ai_model_vision !== undefined) setSetting('ai_model_vision', ai_model_vision.trim());
+
+    if (projectscoid_user !== undefined) setSetting('projectscoid_user', projectscoid_user.trim());
+    if (projectscoid_pass !== undefined && projectscoid_pass !== '********') {
+      setSetting('projectscoid_pass', projectscoid_pass.trim());
+    }
 
     res.json({ success: true, message: 'Settings saved successfully' });
   } catch (err) {
@@ -184,6 +196,6 @@ app.listen(PORT, '0.0.0.0', async () => {
   console.log(`=======================================================`);
   console.log(`🚀 Job & Freelance Manager running on port ${PORT}`);
   console.log(`📡 Local Gateway: http://127.0.0.1:${PORT}`);
-  console.log(`⚙️ Dynamic AI Configuration enabled (via Settings UI)`);
+  console.log(`⚙️ Dynamic AI & Platform Automation Configuration enabled`);
   console.log(`=======================================================`);
 });
