@@ -8,7 +8,7 @@ const cron = require('node-cron');
 const db = require('./db');
 const { getAllSettings, setSetting } = require('./db');
 const { syncAllChannels } = require('./discordScraper');
-const { generateCoverLetter, analyzeJobMatch, testAIConnection } = require('./aiService');
+const { generateCoverLetter, analyzeJobMatch, testAIConnection, fetchAvailableModels } = require('./aiService');
 const { applyToJob, runAutoBidRoutine } = require('./autoApplyEngine');
 
 const app = express();
@@ -128,9 +128,6 @@ app.post('/api/settings', (req, res) => {
       projectscoid_user,
       projectscoid_pass,
       autobid_enabled,
-      autobid_filter_fix_bug,
-      autobid_filter_dev_system,
-      autobid_filter_website_only,
       autobid_custom_prompt,
       autobid_bid_prompt
     } = req.body;
@@ -147,15 +144,26 @@ app.post('/api/settings', (req, res) => {
       setSetting('projectscoid_pass', projectscoid_pass.trim());
     }
 
-    // Auto-bid configs & prompts
+    // Auto-bid configs & prompts (Strict AI website criteria is default and always active)
     if (autobid_enabled !== undefined) setSetting('autobid_enabled', autobid_enabled ? '1' : '0');
-    if (autobid_filter_fix_bug !== undefined) setSetting('autobid_filter_fix_bug', autobid_filter_fix_bug ? '1' : '0');
-    if (autobid_filter_dev_system !== undefined) setSetting('autobid_filter_dev_system', autobid_filter_dev_system ? '1' : '0');
-    if (autobid_filter_website_only !== undefined) setSetting('autobid_filter_website_only', autobid_filter_website_only ? '1' : '0');
+    setSetting('autobid_filter_fix_bug', '1');
+    setSetting('autobid_filter_dev_system', '1');
+    setSetting('autobid_filter_website_only', '1');
+    
     if (autobid_custom_prompt !== undefined) setSetting('autobid_custom_prompt', autobid_custom_prompt.trim());
     if (autobid_bid_prompt !== undefined) setSetting('autobid_bid_prompt', autobid_bid_prompt.trim());
 
     res.json({ success: true, message: 'Settings saved successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Fetch models list from AI host
+app.get('/api/models', async (req, res) => {
+  try {
+    const models = await fetchAvailableModels();
+    res.json({ success: true, models });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -170,8 +178,8 @@ app.post('/api/settings/test', async (req, res) => {
       override = {
         host: (ai_host || current.ai_host || 'https://api.openai.com/v1').replace(/\/+$/, ''),
         apiKey: (ai_api_key && ai_api_key !== '********') ? ai_api_key : current.ai_api_key,
-        modelText: ai_model_text || current.ai_model_text || 'gpt-4o-mini',
-        modelVision: current.ai_model_vision || 'gpt-4o-mini'
+        modelText: ai_model_text || current.ai_model_text || 'ag/gemini-3.7-flash-high',
+        modelVision: current.ai_model_vision || 'ag/gemini-3.7-flash-high'
       };
     }
     const result = await testAIConnection(override);

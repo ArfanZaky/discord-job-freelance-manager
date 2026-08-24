@@ -4,12 +4,12 @@ const { getSetting, getAllSettings } = require('./db');
 function getAIConfig() {
   const settings = getAllSettings();
   
-  let host = settings.ai_host || process.env.AI_HOST || process.env.NINEROUTER_URL || 'https://api.openai.com/v1';
+  let host = settings.ai_host || process.env.AI_HOST || process.env.NINEROUTER_URL || 'https://9routers.cloudverra.com/v1';
   host = host.replace(/\/+$/, '');
 
   const apiKey = settings.ai_api_key || process.env.AI_API_KEY || process.env.NINEROUTER_API_KEY || '';
-  const modelText = settings.ai_model_text || process.env.AI_MODEL_TEXT || 'gpt-4o-mini';
-  const modelVision = settings.ai_model_vision || process.env.AI_MODEL_VISION || 'gpt-4o-mini';
+  const modelText = settings.ai_model_text || process.env.AI_MODEL_TEXT || 'ag/gemini-3.7-flash-high';
+  const modelVision = settings.ai_model_vision || process.env.AI_MODEL_VISION || 'ag/gemini-3.7-flash-high';
 
   return {
     host,
@@ -43,6 +43,30 @@ async function testAIConnection(configOverride = null) {
   return response.data?.choices?.[0]?.message?.content?.trim() || 'Connected';
 }
 
+async function fetchAvailableModels(configOverride = null) {
+  const config = configOverride || getAIConfig();
+  if (!config.apiKey) return [];
+
+  try {
+    const res = await axios.get(`${config.host}/models`, {
+      headers: {
+        'Authorization': `Bearer ${config.apiKey}`
+      },
+      timeout: 10000
+    });
+    if (res.data && Array.isArray(res.data.data)) {
+      return res.data.data.map(m => ({
+        id: m.id,
+        vision: m.capabilities ? Boolean(m.capabilities.vision) : true
+      }));
+    }
+    return [];
+  } catch (err) {
+    console.error('Failed to fetch models from AI host:', err.message);
+    return [];
+  }
+}
+
 /**
  * AI Classifier to strictly determine if a project matches:
  * 1. Fix Bug Website
@@ -55,28 +79,22 @@ async function classifyProjectForAutoBid(item) {
     return { match: false, category: 'Unconfigured AI', reason: 'API Key AI belum diset di Settings' };
   }
 
-  const filterFixBug = getSetting('autobid_filter_fix_bug', '1') === '1';
-  const filterDevSystem = getSetting('autobid_filter_dev_system', '1') === '1';
-  const filterWebOnly = getSetting('autobid_filter_website_only', '1') === '1';
   const customFilterRule = getSetting('autobid_custom_prompt', '');
 
-  const allowedCategories = [];
-  if (filterFixBug) allowedCategories.push('"Fix Bug Website" (perbaikan bug, error, debugging, fixing code website)');
-  if (filterDevSystem) allowedCategories.push('"Development System Website" (pembuatan website, web app, web backend/frontend, integrasi API web, dashboard, CMS, SaaS web)');
+  const prompt = `Anda adalah kurator proyek freelance Full Stack & Web Developer spesialis website.
+Tugas Anda mengevaluasi secara cerdas dan ketat apakah proyek ini LAYAK di-bid otomatis.
 
-  const prompt = `Anda adalah sistem kurasi proyek freelance spesialis Full Stack & Web Developer.
-Tugas Anda mengevaluasi apakah proyek berikut LAYAK di-auto-bid sesuai kriteria ketat berikut:
+KRITERIA WAJIB PENERIMAAN (HANYA TERIMA JIKA MEMENUHI SALAH SATU DI BAWAH):
+1. Fix Bug Website: Perbaikan bug, error, debugging, perbaikan script/database/plugin/tema, crash, atau troubleshooting pada website.
+2. Development System Website: Pembuatan website baru, pengembangan modul web, backend API web, frontend web, integrasi sistem website, dashboard, CMS, atau SaaS berbasis web.
+3. KHUSUS WEBSITE SAJA: Ekosistem web (PHP, Laravel, WordPress, Next.js, React, Node.js, Python/Django/Flask, Vue, CodeIgniter, Express, HTML/CSS/JS, Tailwind, PostgreSQL/MySQL, REST API Web).
 
-KRITERIA WAJIB:
-1. Target kategori yang diizinkan: ${allowedCategories.join(' ATAU ') || 'Tidak ada kriteria aktif'}.
-2. Lingkup: ${filterWebOnly ? 'KHUSUS EKOSISTEM WEBSITE (PHP, Laravel, WordPress, Next.js, React, Node.js, Python, Vue, CodeIgniter, Django, HTML/CSS/JS, Tailwind, API Backend Web, dsb).' : 'Umum'}
-3. LARANGAN KERAS (Wajib tolak match: false):
-   - Proyek video editing, animasi, reels, tiktok, youtube
-   - Desain grafis murni, logo, banner, ilustrasi tanpa coding web
-   - Penulisan artikel, copywriting, SEO content, data entry, review
-   - Jual beli akun (AdSense, domain, sosmed, game)
-   - Voice over, audio, musik
-   - Mobile app murni (Flutter/React Native/Android/iOS) KECUALI ada integrasi backend/web API yang eksplisit.
+LARANGAN KERAS (Wajib tolak match: false):
+- Proyek mobile app murni (Android/iOS/Flutter/Kotlin/Swift) KECUALI integrasi backend/REST API web.
+- Desain grafis murni, logo, banner, canva, animasi tanpa coding web.
+- Video editing, YouTube, TikTok, voice over, audio/musik.
+- Penulisan artikel, SEO copywriting murni, data entry, tugas kuliah/makalah.
+- Jual beli akun AdSense, domain, akun sosmed, akun game.
 ${customFilterRule ? `Aturan Filter Tambahan:\n${customFilterRule}` : ''}
 
 DETAIL PROYEK:
@@ -91,7 +109,7 @@ KEMBALIKAN OUTPUT DALAM FORMAT JSON VALID SAJA:
 {
   "match": true / false,
   "category": "Fix Bug Website" | "Development System Website" | "Other / Rejected",
-  "reason": "Alasan singkat (1 kalimat padat dalam Bahasa Indonesia)"
+  "reason": "Alasan singkat padat (1 kalimat bahasa Indonesia)"
 }`;
 
   try {
@@ -261,6 +279,7 @@ Format JSON: {"score": 85, "reason": "Keahlian React dan Node.js sangat cocok de
 module.exports = {
   getAIConfig,
   testAIConnection,
+  fetchAvailableModels,
   classifyProjectForAutoBid,
   generateCoverLetter,
   solveCaptchaWithVision,
