@@ -123,7 +123,8 @@ app.post('/api/settings', (req, res) => {
     const {
       ai_host,
       ai_api_key,
-      ai_model_text,
+      ai_model_filter,
+      ai_model_proposal,
       ai_model_vision,
       projectscoid_user,
       projectscoid_pass,
@@ -136,7 +137,8 @@ app.post('/api/settings', (req, res) => {
     if (ai_api_key !== undefined && ai_api_key !== '********') {
       setSetting('ai_api_key', ai_api_key.trim());
     }
-    if (ai_model_text !== undefined) setSetting('ai_model_text', ai_model_text.trim());
+    if (ai_model_filter !== undefined) setSetting('ai_model_filter', ai_model_filter.trim());
+    if (ai_model_proposal !== undefined) setSetting('ai_model_proposal', ai_model_proposal.trim());
     if (ai_model_vision !== undefined) setSetting('ai_model_vision', ai_model_vision.trim());
 
     if (projectscoid_user !== undefined) setSetting('projectscoid_user', projectscoid_user.trim());
@@ -144,12 +146,7 @@ app.post('/api/settings', (req, res) => {
       setSetting('projectscoid_pass', projectscoid_pass.trim());
     }
 
-    // Auto-bid configs & prompts (Strict AI website criteria is default and always active)
     if (autobid_enabled !== undefined) setSetting('autobid_enabled', autobid_enabled ? '1' : '0');
-    setSetting('autobid_filter_fix_bug', '1');
-    setSetting('autobid_filter_dev_system', '1');
-    setSetting('autobid_filter_website_only', '1');
-    
     if (autobid_custom_prompt !== undefined) setSetting('autobid_custom_prompt', autobid_custom_prompt.trim());
     if (autobid_bid_prompt !== undefined) setSetting('autobid_bid_prompt', autobid_bid_prompt.trim());
 
@@ -171,14 +168,15 @@ app.get('/api/models', async (req, res) => {
 
 app.post('/api/settings/test', async (req, res) => {
   try {
-    const { ai_host, ai_api_key, ai_model_text } = req.body;
+    const { ai_host, ai_api_key, ai_model_proposal, ai_model_filter } = req.body;
     let override = null;
-    if (ai_host || ai_api_key || ai_model_text) {
+    if (ai_host || ai_api_key || ai_model_proposal || ai_model_filter) {
       const current = getAllSettings();
       override = {
         host: (ai_host || current.ai_host || 'https://api.openai.com/v1').replace(/\/+$/, ''),
         apiKey: (ai_api_key && ai_api_key !== '********') ? ai_api_key : current.ai_api_key,
-        modelText: ai_model_text || current.ai_model_text || 'ag/gemini-3.7-flash-high',
+        modelProposal: ai_model_proposal || current.ai_model_proposal || 'ag/gemini-3.7-flash-high',
+        modelFilter: ai_model_filter || current.ai_model_filter || 'ag/gemini-3.7-flash-high',
         modelVision: current.ai_model_vision || 'ag/gemini-3.7-flash-high'
       };
     }

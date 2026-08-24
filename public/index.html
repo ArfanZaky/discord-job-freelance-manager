@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jobs & Freelance Manager | Cloudverra</title>
+  <title>Jobs & Freelance Manager</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="alternate icon" href="/favicon.svg">
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -18,40 +18,56 @@
               500: '#14b8a6',
               600: '#0d9488',
               700: '#0f766e',
+              900: '#134e4a',
             }
           }
         }
       }
     }
   </script>
+  <!-- FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    body { font-family: 'Inter', sans-serif; }
-    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-teal-500 selection:text-white">
 
   <!-- Top Navbar -->
-  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40">
+  <header class="bg-slate-900/80 backdrop-blur border-b border-slate-800 sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center text-slate-950 shadow-lg shadow-teal-500/20 font-bold text-xl">
-          <i class="fa-solid fa-briefcase"></i>
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
+          <i class="fa-solid fa-briefcase text-white text-lg"></i>
         </div>
         <div>
-          <h1 class="font-bold text-lg leading-none tracking-tight flex items-center gap-2">
-            Job & Freelance Manager
-            <span id="nav-autobid-badge" class="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">Auto-Bid Off</span>
-          </h1>
-          <p class="text-xs text-slate-400 mt-0.5">Automated Aggregator • AI Proposal & Auto-Bid</p>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+              Job & Freelance Manager
+            </h1>
+            <span id="badge-autobid" class="hidden text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              ⚡ Auto-Bid ON
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">Automated Opportunity Ingestion & AI Auto-Bid</p>
         </div>
       </div>
 
-      <div class="flex items-center gap-2 sm:gap-3">
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2.5">
         <button onclick="openSettingsModal()" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-medium border border-slate-700 transition flex items-center gap-2">
           <i class="fa-solid fa-gear text-teal-400"></i>
           <span class="hidden sm:inline">Settings & Accounts</span>
@@ -120,185 +136,211 @@
       </div>
     </div>
 
-    <!-- Filter Bar & Search -->
-    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row gap-4 items-center justify-between">
-      <div class="flex items-center gap-2 flex-wrap w-full md:w-auto">
-        <button onclick="setTab('all')" id="tab-all" class="px-4 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white transition">All</button>
-        <button onclick="setTab('job')" id="tab-job" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Jobs</button>
-        <button onclick="setTab('freelance')" id="tab-freelance" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Freelance</button>
-        <button onclick="setTab('bids')" id="tab-bids" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1.5">
-          <i class="fa-solid fa-gavel text-xs text-indigo-400"></i>
-          <span>Bids</span>
+    <!-- Filters & Search Bar -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800/80">
+      <div class="flex flex-wrap items-center gap-2">
+        <button onclick="setTab('all')" id="tab-all" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-teal-600 text-white transition">
+          All Listings
         </button>
-        <button onclick="setTab('applied')" id="tab-applied" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Applied</button>
+        <button onclick="setTab('job')" id="tab-job" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition">
+          💼 Jobs
+        </button>
+        <button onclick="setTab('freelance')" id="tab-freelance" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition">
+          🚀 Freelance
+        </button>
+        <button onclick="setTab('bids')" id="tab-bids" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition flex items-center gap-1.5">
+          <i class="fa-solid fa-gavel text-indigo-400"></i> Bids
+        </button>
+        <button onclick="setTab('applied')" id="tab-applied" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition">
+          ✅ Applied
+        </button>
+      </div>
 
-        <!-- Source Platform Filter Dropdown -->
-        <div class="relative inline-block ml-1">
-          <select id="source-filter" onchange="handleSourceChange(this.value)" class="bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-teal-500 font-medium">
+      <!-- Source Platform Filter Dropdown & Search -->
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <div class="relative min-w-[150px]">
+          <select id="filter-source" onchange="applyFilters()" class="w-full appearance-none bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 pr-8 text-xs text-slate-300 focus:outline-none focus:border-teal-500 font-medium cursor-pointer">
             <option value="all">🌐 All Sources</option>
-            <option value="JobStreet">JobStreet</option>
+            <option value="Projects.co.id">Projects.co.id</option>
             <option value="Glints">Glints</option>
+            <option value="JobStreet">JobStreet</option>
             <option value="Kalibrr">Kalibrr</option>
             <option value="Dealls">Dealls</option>
-            <option value="Projects.co.id">Projects.co.id</option>
-            <option value="Discord Feed">Other Feeds</option>
+            <option value="Upwork">Upwork</option>
+            <option value="Freelancer">Freelancer</option>
+            <option value="Discord">Discord / Other</option>
           </select>
+          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+            <i class="fa-solid fa-chevron-down text-[10px]"></i>
+          </div>
+        </div>
+
+        <div class="relative w-full sm:w-64">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-500 text-xs"></i>
+          <input type="text" id="search-input" onkeyup="applyFilters()" placeholder="Search title, skills, company..." 
+            class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-teal-500 transition">
         </div>
       </div>
+    </div>
 
-      <div class="w-full md:w-80 relative">
-        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
-        <input type="text" id="search-input" onkeyup="handleSearch()" placeholder="Search title, skills, company..." 
-          class="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-teal-500 transition">
+    <!-- Items Grid Container -->
+    <div id="items-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <!-- Loading Skeleton -->
+      <div class="col-span-full py-16 text-center text-slate-500 flex flex-col items-center">
+        <div class="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+        <p class="mt-4 text-sm font-medium">Fetching job listings...</p>
       </div>
     </div>
-
-    <!-- Listings Container -->
-    <div id="listing-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-      <!-- Dynamic Cards will be inserted here -->
-    </div>
-
-    <!-- Empty State -->
-    <div id="empty-state" class="hidden text-center py-16 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">
-      <i class="fa-solid fa-inbox text-4xl text-slate-600 mb-3"></i>
-      <h4 class="text-base font-semibold text-slate-300">No Listings Found</h4>
-      <p class="text-xs text-slate-500 mt-1">Adjust your filter options or search keyword.</p>
-    </div>
-
   </main>
 
   <!-- Job Detail & Apply Modal -->
-  <div id="apply-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+  <div id="detail-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
       <!-- Modal Header -->
       <div class="p-6 border-b border-slate-800 flex items-start justify-between">
         <div>
           <div class="flex items-center gap-2">
-            <span id="modal-type-badge" class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-teal-500/10 text-teal-400 border border-teal-500/20">Job</span>
-            <span id="modal-source-badge" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-300 border border-slate-700">Source</span>
+            <span id="modal-type-badge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider"></span>
+            <span id="modal-platform-badge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700"></span>
+            <span id="modal-status-badge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-400"></span>
           </div>
-          <h2 id="modal-title" class="text-xl font-bold text-white mt-2">Job Title</h2>
-          <p id="modal-company" class="text-sm text-slate-400 mt-0.5">Company Name • Location</p>
+          <h3 id="modal-title" class="text-xl font-bold text-white mt-2 leading-snug"></h3>
+          <p id="modal-company" class="text-sm text-slate-400 mt-0.5"></p>
         </div>
-        <button onclick="closeApplyModal()" class="text-slate-400 hover:text-white text-xl p-1">
-          <i class="fa-solid fa-xmark"></i>
+        <button onclick="closeDetailModal()" class="text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800/50 hover:bg-slate-800">
+          <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>
 
       <!-- Modal Body -->
-      <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4 text-sm">
-        <div>
-          <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider">Salary / Budget</h4>
-          <p id="modal-budget" class="text-teal-400 font-semibold mt-0.5">Not disclosed</p>
+      <div class="p-6 overflow-y-auto space-y-6 custom-scrollbar flex-1">
+        <!-- Key Meta -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800/80 text-xs">
+          <div>
+            <span class="text-slate-500 block">Budget / Salary</span>
+            <span id="modal-salary" class="font-semibold text-teal-400 mt-0.5 block">Not specified</span>
+          </div>
+          <div>
+            <span class="text-slate-500 block">Location / Work Type</span>
+            <span id="modal-location" class="font-semibold text-slate-200 mt-0.5 block">Remote</span>
+          </div>
+          <div>
+            <span class="text-slate-500 block">Category</span>
+            <span id="modal-category" class="font-semibold text-slate-200 mt-0.5 block">-</span>
+          </div>
         </div>
 
+        <!-- Skills Required -->
         <div>
-          <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider">Required Skills</h4>
-          <p id="modal-skills" class="text-slate-300 mt-0.5">JavaScript, Node.js</p>
+          <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider mb-2">Required Skills</h4>
+          <div id="modal-skills" class="flex flex-wrap gap-1.5"></div>
         </div>
 
+        <!-- Job Description -->
         <div>
-          <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider">Description</h4>
-          <div id="modal-description" class="text-slate-300 mt-1 bg-slate-950 p-4 rounded-xl border border-slate-800 leading-relaxed max-h-40 overflow-y-auto whitespace-pre-wrap"></div>
+          <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider mb-2">Description</h4>
+          <div id="modal-desc" class="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap bg-slate-950/50 p-4 rounded-2xl border border-slate-800/50"></div>
         </div>
 
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider">AI Generated Cover Letter / Proposal</h4>
-            <button onclick="regenerateAIProposal()" class="text-xs text-teal-400 hover:underline flex items-center gap-1">
-              <i class="fa-solid fa-wand-magic-sparkles"></i> Regenerate via AI
+        <!-- Generated Cover Letter / Proposal -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold uppercase text-teal-400 tracking-wider flex items-center gap-2">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> AI Cover Letter / Proposal
+            </h4>
+            <button id="btn-regen-ai" onclick="generateAIProposal()" class="text-xs text-teal-400 hover:text-teal-300 flex items-center gap-1">
+              <i class="fa-solid fa-arrows-rotate"></i> Regenerate
             </button>
           </div>
-          <textarea id="modal-cover-letter" rows="6" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 text-sm focus:outline-none focus:border-teal-500 custom-scrollbar" placeholder="Generating AI cover letter..."></textarea>
+          <textarea id="modal-cover-letter" rows="5" 
+            placeholder="AI proposal will be generated here automatically..." 
+            class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs text-slate-200 focus:outline-none focus:border-teal-500 font-mono leading-relaxed custom-scrollbar"></textarea>
         </div>
 
-        <div id="modal-log-section" class="hidden">
-          <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider mb-1">Automation Execution Log</h4>
-          <pre id="modal-log" class="bg-black/80 text-teal-400 font-mono text-xs p-3 rounded-xl overflow-x-auto max-h-32 border border-slate-800"></pre>
+        <!-- Automation Logs (if applied) -->
+        <div id="modal-logs-section" class="hidden space-y-2">
+          <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider">Execution Logs</h4>
+          <pre id="modal-logs" class="p-3 bg-black/60 rounded-xl text-[11px] font-mono text-emerald-400 whitespace-pre-wrap overflow-x-auto border border-slate-800"></pre>
         </div>
       </div>
 
       <!-- Modal Footer -->
-      <div class="p-6 border-t border-slate-800 bg-slate-900/50 flex items-center justify-between">
-        <a id="modal-external-link" href="#" target="_blank" class="text-xs text-slate-400 hover:text-teal-400 flex items-center gap-1.5">
-          <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Original Page
+      <div class="p-6 border-t border-slate-800 bg-slate-900/50 flex flex-wrap items-center justify-between gap-3">
+        <a id="modal-source-link" href="#" target="_blank" class="text-xs text-slate-400 hover:text-teal-400 flex items-center gap-1.5 underline">
+          <span>Open External Listing</span>
+          <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
         </a>
         <div class="flex items-center gap-3">
-          <button onclick="closeApplyModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-medium text-slate-300">Close</button>
-          <button id="btn-execute-apply" onclick="executeAutoApply()" class="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-sm font-bold text-white shadow-lg shadow-teal-600/30 flex items-center gap-2">
+          <button onclick="closeDetailModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition">
+            Close
+          </button>
+          <button id="modal-btn-apply" onclick="executeAutoApply()" class="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-xs font-bold text-white transition flex items-center gap-2 shadow-lg shadow-teal-600/30">
             <i class="fa-solid fa-paper-plane"></i>
-            <span>Auto-Apply / Submit Bid</span>
+            <span>Auto-Apply Now</span>
           </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Profile Settings Modal -->
-  <div id="profile-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
-        <h3 class="text-lg font-bold text-white flex items-center gap-2">
-          <i class="fa-solid fa-user-circle text-teal-400"></i> Applicant Auto-Apply Profile
-        </h3>
+  <!-- User Profile Modal -->
+  <div id="profile-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+      <div class="p-6 border-b border-slate-800 flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-bold text-white">Applicant Profile & CV</h3>
+          <p class="text-xs text-slate-400">Used by AI to craft personalized proposals & auto-fill</p>
+        </div>
         <button onclick="closeProfileModal()" class="text-slate-400 hover:text-white">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>
 
-      <form id="profile-form" onsubmit="saveProfile(event)" class="space-y-3 text-sm">
+      <form id="profile-form" onsubmit="saveProfile(event)" class="p-6 overflow-y-auto space-y-4 custom-scrollbar flex-1 text-xs">
+        <div>
+          <label class="font-semibold text-slate-300 block mb-1">Full Name</label>
+          <input type="text" id="prof-name" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-teal-500" required>
+        </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="text-xs font-semibold text-slate-400">Full Name</label>
-            <input type="text" id="prof-name" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500" required>
+            <label class="font-semibold text-slate-300 block mb-1">Email Address</label>
+            <input type="email" id="prof-email" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-teal-500" required>
           </div>
           <div>
-            <label class="text-xs font-semibold text-slate-400">Email</label>
-            <input type="email" id="prof-email" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500" required>
+            <label class="font-semibold text-slate-300 block mb-1">Phone Number</label>
+            <input type="text" id="prof-phone" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-teal-500">
           </div>
         </div>
-
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="text-xs font-semibold text-slate-400">Phone / WhatsApp</label>
-            <input type="text" id="prof-phone" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500">
+            <label class="font-semibold text-slate-300 block mb-1">Portfolio Website</label>
+            <input type="url" id="prof-portfolio" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-teal-500">
           </div>
           <div>
-            <label class="text-xs font-semibold text-slate-400">Experience</label>
-            <input type="text" id="prof-exp" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500">
+            <label class="font-semibold text-slate-300 block mb-1">GitHub / LinkedIn</label>
+            <input type="url" id="prof-github" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-teal-500">
           </div>
         </div>
-
         <div>
-          <label class="text-xs font-semibold text-slate-400">LinkedIn & Portfolio URLs</label>
-          <div class="grid grid-cols-2 gap-3 mt-1">
-            <input type="url" id="prof-linkedin" placeholder="LinkedIn URL" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500">
-            <input type="url" id="prof-portfolio" placeholder="Portfolio / Website URL" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500">
-          </div>
+          <label class="font-semibold text-slate-300 block mb-1">Core Skills (Comma-separated)</label>
+          <input type="text" id="prof-skills" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-teal-500" required>
         </div>
-
         <div>
-          <label class="text-xs font-semibold text-slate-400">Key Skills (Comma Separated)</label>
-          <input type="text" id="prof-skills" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-teal-500">
+          <label class="font-semibold text-slate-300 block mb-1">Professional Bio / Pitch</label>
+          <textarea id="prof-bio" rows="4" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-teal-500 font-sans leading-relaxed"></textarea>
         </div>
-
-        <div>
-          <label class="text-xs font-semibold text-slate-400">Bio Summary</label>
-          <textarea id="prof-bio" rows="3" class="w-full mt-1 bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-teal-500 custom-scrollbar"></textarea>
-        </div>
-
-        <div class="flex justify-end gap-3 pt-3">
-          <button type="button" onclick="closeProfileModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium">Cancel</button>
-          <button type="submit" class="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-lg shadow-teal-600/30">Save Profile</button>
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="closeProfileModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium">Cancel</button>
+          <button type="submit" class="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-lg shadow-teal-600/30">Save Profile</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Settings & Accounts Modal -->
-  <div id="settings-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto custom-scrollbar">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+  <!-- Settings Modal (AI Gateway + Projects.co.id + Auto-Bid Modular Prompts) -->
+  <div id="settings-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+      <div class="p-6 border-b border-slate-800 flex items-center justify-between">
         <div>
           <h3 class="text-lg font-bold text-white flex items-center gap-2">
             <i class="fa-solid fa-sliders text-teal-400"></i> Settings & Platform Accounts
@@ -310,13 +352,13 @@
         </button>
       </div>
 
-      <form id="settings-form" onsubmit="saveSettings(event)" class="space-y-4 text-sm">
+      <form id="settings-form" onsubmit="saveSettings(event)" class="p-6 overflow-y-auto space-y-4 text-sm custom-scrollbar flex-1">
         
-        <!-- AI Settings Section -->
+        <!-- AI Host & Key Section -->
         <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-3">
           <div class="flex items-center justify-between">
             <h4 class="text-xs font-bold uppercase text-teal-400 tracking-wider flex items-center gap-1.5">
-              <i class="fa-solid fa-robot"></i> AI Engine Configuration
+              <i class="fa-solid fa-robot"></i> AI Gateway Configuration
             </h4>
             <button type="button" onclick="loadModelsFromHost()" class="text-[11px] text-teal-400 hover:underline flex items-center gap-1">
               <i class="fa-solid fa-rotate"></i> Refresh Models
@@ -340,48 +382,34 @@
             </div>
             <span id="key-hint" class="text-[11px] text-slate-500 mt-0.5 block">Kosongkan jika tidak ingin mengubah key yang sudah tersimpan.</span>
           </div>
+        </div>
 
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="text-xs font-semibold text-slate-400 flex items-center justify-between">
-                <span>Model Text</span>
-                <span class="text-[10px] text-slate-500 font-normal">Pilih / Ketik</span>
-              </label>
-              <div class="relative mt-1">
-                <input list="model-text-list" type="text" id="set-model-text" placeholder="ag/gemini-3.7-flash-high" 
-                  class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-200 focus:outline-none focus:border-teal-500 font-mono text-xs" required>
-                <datalist id="model-text-list">
-                  <option value="ag/gemini-3.7-flash-high">ag/gemini-3.7-flash-high (Rekomendasi Cepat & Cerdas)</option>
-                  <option value="ag/gemini-3.6-flash-high">ag/gemini-3.6-flash-high</option>
-                  <option value="ag/gemini-3-flash">ag/gemini-3-flash</option>
-                  <option value="ag/claude-sonnet-4-6">ag/claude-sonnet-4-6</option>
-                  <option value="kr/claude-sonnet-5">kr/claude-sonnet-5</option>
-                  <option value="kr/deepseek-3.2">kr/deepseek-3.2</option>
-                  <option value="cmc/deepseek/deepseek-v4-flash">cmc/deepseek/deepseek-v4-flash</option>
-                  <option value="cmc/moonshotai/Kimi-K2.6">cmc/moonshotai/Kimi-K2.6</option>
-                  <option value="gpt-4o-mini">gpt-4o-mini</option>
-                </datalist>
-              </div>
-            </div>
+        <!-- AI Captcha Solver (Vision) -->
+        <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold uppercase text-cyan-400 tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-eye"></i> AI Captcha Solver (Vision)
+            </h4>
+            <span class="text-[10px] text-slate-400">Penyelesai Captcha Otomatis</span>
+          </div>
 
-            <div>
-              <label class="text-xs font-semibold text-slate-400 flex items-center justify-between">
-                <span>Model Vision</span>
-                <span class="text-[10px] text-slate-500 font-normal">Pilih / Ketik</span>
-              </label>
-              <div class="relative mt-1">
-                <input list="model-vision-list" type="text" id="set-model-vision" placeholder="ag/gemini-3.7-flash-high" 
-                  class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-200 focus:outline-none focus:border-teal-500 font-mono text-xs" required>
-                <datalist id="model-vision-list">
-                  <option value="ag/gemini-3.7-flash-high">ag/gemini-3.7-flash-high (Vision & Captcha Solver)</option>
-                  <option value="ag/gemini-3.6-flash-high">ag/gemini-3.6-flash-high</option>
-                  <option value="ag/gemini-3-flash">ag/gemini-3-flash</option>
-                  <option value="ag/claude-sonnet-4-6">ag/claude-sonnet-4-6</option>
-                  <option value="kr/claude-sonnet-5">kr/claude-sonnet-5</option>
-                  <option value="gpt-4o-mini">gpt-4o-mini</option>
-                  <option value="gpt-4o">gpt-4o</option>
-                </datalist>
-              </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-400 flex items-center justify-between">
+              <span>Model Vision (Captcha OCR)</span>
+              <span class="text-[10px] text-slate-500 font-normal">Pilih / Ketik</span>
+            </label>
+            <div class="relative mt-1">
+              <input list="model-vision-list" type="text" id="set-model-vision" placeholder="ag/gemini-3.7-flash-high" 
+                class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-200 focus:outline-none focus:border-teal-500 font-mono text-xs" required>
+              <datalist id="model-vision-list">
+                <option value="ag/gemini-3.7-flash-high">ag/gemini-3.7-flash-high (Vision & Captcha Solver)</option>
+                <option value="ag/gemini-3.6-flash-high">ag/gemini-3.6-flash-high</option>
+                <option value="ag/gemini-3-flash">ag/gemini-3-flash</option>
+                <option value="ag/claude-sonnet-4-6">ag/claude-sonnet-4-6</option>
+                <option value="kr/claude-sonnet-5">kr/claude-sonnet-5</option>
+                <option value="gpt-4o-mini">gpt-4o-mini</option>
+                <option value="gpt-4o">gpt-4o</option>
+              </datalist>
             </div>
           </div>
         </div>
@@ -417,64 +445,74 @@
             </div>
           </div>
 
-          <!-- Target Project Scope Informational Badges (Always Handled Strictly by AI) -->
-          <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-2.5">
+          <!-- AI Selection Filter Rule (Instruksi Tambahan Penyaringan Lowongan) + Model Filter -->
+          <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-3">
             <div class="flex items-center justify-between">
-              <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <i class="fa-solid fa-filter-circle-check text-emerald-400"></i> Kriteria Proyek yang Diterima Otomatis (Filter AI):
+              <label class="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                <i class="fa-solid fa-filter text-emerald-400"></i> AI Selection Filter Rule (Instruksi Tambahan Penyaringan Lowongan)
               </label>
-              <span class="text-[10px] uppercase font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">AI Classifier Active</span>
+              <span class="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Filter Classifier</span>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-              <div class="flex items-center gap-2.5 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 text-slate-200 shadow-sm">
-                <div class="w-7 h-7 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
-                  <i class="fa-solid fa-bug text-xs"></i>
-                </div>
-                <div>
-                  <div class="font-semibold text-white">Fix Bug Website</div>
-                  <div class="text-[10px] text-slate-400">Debugging & Error Fix</div>
-                </div>
-              </div>
-              <div class="flex items-center gap-2.5 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 text-slate-200 shadow-sm">
-                <div class="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                  <i class="fa-solid fa-laptop-code text-xs"></i>
-                </div>
-                <div>
-                  <div class="font-semibold text-white">Development System</div>
-                  <div class="text-[10px] text-slate-400">Backend, Frontend & API</div>
-                </div>
-              </div>
-              <div class="flex items-center gap-2.5 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 text-slate-200 shadow-sm">
-                <div class="w-7 h-7 rounded-lg bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
-                  <i class="fa-solid fa-globe text-xs"></i>
-                </div>
-                <div>
-                  <div class="font-semibold text-white">Khusus Website Saja</div>
-                  <div class="text-[10px] text-slate-400">Web Apps & Ecosystem</div>
-                </div>
-              </div>
+            <div>
+              <label class="text-[11px] font-semibold text-slate-400 flex items-center justify-between mb-1">
+                <span>Model AI untuk Filter Penyaringan</span>
+                <span class="text-[10px] text-slate-500">Pilih / Ketik</span>
+              </label>
+              <input list="model-filter-list" type="text" id="set-model-filter" placeholder="ag/gemini-3.7-flash-high" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none focus:border-teal-500 font-mono text-xs" required>
+              <datalist id="model-filter-list">
+                <option value="ag/gemini-3.7-flash-high">ag/gemini-3.7-flash-high (Rekomendasi Cepat & Akurat)</option>
+                <option value="ag/gemini-3.6-flash-high">ag/gemini-3.6-flash-high</option>
+                <option value="ag/gemini-3-flash">ag/gemini-3-flash</option>
+                <option value="ag/claude-sonnet-4-6">ag/claude-sonnet-4-6</option>
+                <option value="kr/claude-sonnet-5">kr/claude-sonnet-5</option>
+                <option value="kr/deepseek-3.2">kr/deepseek-3.2</option>
+                <option value="cmc/deepseek/deepseek-v4-flash">cmc/deepseek/deepseek-v4-flash</option>
+                <option value="cmc/moonshotai/Kimi-K2.6">cmc/moonshotai/Kimi-K2.6</option>
+                <option value="gpt-4o-mini">gpt-4o-mini</option>
+              </datalist>
+            </div>
+            <div>
+              <label class="text-[11px] font-semibold text-slate-400 block mb-1">Prompt Kriteria Penyaringan Lowongan:</label>
+              <textarea id="set-autobid-custom-prompt" rows="3" 
+                placeholder="Instruksi kriteria filter penyaringan untuk AI evaluator (contoh: Hanya terima bug fix website atau pengembangan sistem web, tolak video/desain/artikel)..." 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 text-xs focus:outline-none focus:border-teal-500 font-sans leading-relaxed custom-scrollbar"></textarea>
             </div>
           </div>
 
-          <!-- Custom AI Prompt for Proposal Bid -->
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+          <!-- AI Bid Proposal Prompt (Instruksi Pembuatan Penawaran) + Model Proposal -->
+          <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
                 <i class="fa-solid fa-wand-magic-sparkles text-teal-400"></i> AI Bid Proposal Prompt (Instruksi Pembuatan Penawaran)
               </label>
-              <span class="text-[11px] text-teal-400">Digunakan saat auto-bid</span>
+              <span class="text-[10px] text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded border border-teal-500/20">Proposal Writer</span>
             </div>
-            <textarea id="set-autobid-bid-prompt" rows="3" 
-              placeholder="Instruksi kustom AI untuk proposal penawaran (contoh: tekankan pengalaman fullstack, jaminan pengerjaan cepat, sertakan portofolio web)..." 
-              class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-slate-200 text-xs focus:outline-none focus:border-teal-500 font-sans leading-relaxed custom-scrollbar"></textarea>
-          </div>
-
-          <!-- Custom AI Rule / Filter Prompt -->
-          <div>
-            <label class="text-xs font-semibold text-slate-300 block mb-1">AI Selection Filter Rule (Instruksi Tambahan Penyaringan Lowongan):</label>
-            <textarea id="set-autobid-custom-prompt" rows="2" 
-              placeholder="Instruksi filter penyaringan tambahan untuk AI evaluator..." 
-              class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-slate-200 text-xs focus:outline-none focus:border-teal-500 font-sans leading-relaxed custom-scrollbar"></textarea>
+            <div>
+              <label class="text-[11px] font-semibold text-slate-400 flex items-center justify-between mb-1">
+                <span>Model AI untuk Proposal / Bid</span>
+                <span class="text-[10px] text-slate-500">Pilih / Ketik</span>
+              </label>
+              <input list="model-proposal-list" type="text" id="set-model-proposal" placeholder="ag/gemini-3.7-flash-high" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none focus:border-teal-500 font-mono text-xs" required>
+              <datalist id="model-proposal-list">
+                <option value="ag/gemini-3.7-flash-high">ag/gemini-3.7-flash-high (Rekomendasi Cepat & Cerdas)</option>
+                <option value="ag/gemini-3.6-flash-high">ag/gemini-3.6-flash-high</option>
+                <option value="ag/gemini-3-flash">ag/gemini-3-flash</option>
+                <option value="ag/claude-sonnet-4-6">ag/claude-sonnet-4-6</option>
+                <option value="kr/claude-sonnet-5">kr/claude-sonnet-5</option>
+                <option value="kr/deepseek-3.2">kr/deepseek-3.2</option>
+                <option value="cmc/deepseek/deepseek-v4-flash">cmc/deepseek/deepseek-v4-flash</option>
+                <option value="cmc/moonshotai/Kimi-K2.6">cmc/moonshotai/Kimi-K2.6</option>
+                <option value="gpt-4o-mini">gpt-4o-mini</option>
+              </datalist>
+            </div>
+            <div>
+              <label class="text-[11px] font-semibold text-slate-400 block mb-1">Prompt Instruksi Pembuatan Proposal:</label>
+              <textarea id="set-autobid-bid-prompt" rows="3" 
+                placeholder="Instruksi kustom AI untuk proposal penawaran (contoh: tekankan pengalaman fullstack, jaminan pengerjaan cepat, sertakan portofolio web)..." 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 text-xs focus:outline-none focus:border-teal-500 font-sans leading-relaxed custom-scrollbar"></textarea>
+            </div>
           </div>
         </div>
 
@@ -498,18 +536,19 @@
     let allItems = [];
     let activeTab = 'all'; // 'all', 'job', 'freelance', 'bids', 'applied'
     let currentFilterSource = 'all';
-    let activeItem = null;
+    let currentSelectedItem = null;
 
     async function loadData() {
       try {
         const res = await fetch('/api/items');
         const data = await res.json();
-        allItems = data.items || [];
-        updateStats();
-        populateSourceDropdown();
-        renderListings();
-      } catch (e) {
-        console.error('Failed to load items:', e);
+        if (data.success) {
+          allItems = data.items;
+          updateMetrics();
+          applyFilters();
+        }
+      } catch (err) {
+        console.error('Error loading data:', err);
       }
     }
 
@@ -517,351 +556,334 @@
       try {
         const res = await fetch('/api/settings');
         const data = await res.json();
-        const badge = document.getElementById('nav-autobid-badge');
-        if (data.settings && data.settings.autobid_enabled === '1') {
-          badge.className = 'text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-          badge.innerText = '⚡ Auto-Bid ON';
-        } else {
-          badge.className = 'text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700';
-          badge.innerText = 'Auto-Bid OFF';
+        if (data.success) {
+          const badge = document.getElementById('badge-autobid');
+          if (data.settings.autobid_enabled === '1') {
+            badge.classList.remove('hidden');
+          } else {
+            badge.classList.add('hidden');
+          }
         }
-      } catch (e) {}
+      } catch (err) {
+        console.error('Error loading autobid badge:', err);
+      }
     }
 
-    function populateSourceDropdown() {
-      const select = document.getElementById('source-filter');
-      const sources = new Set(allItems.map(i => i.platform_source).filter(Boolean));
-      const current = select.value;
-      
-      let html = '<option value="all">🌐 All Sources</option>';
-      Array.from(sources).sort().forEach(src => {
-        html += `<option value="${src}">${src}</option>`;
-      });
-      select.innerHTML = html;
-      select.value = current;
-    }
-
-    function handleSourceChange(val) {
-      currentFilterSource = val;
-      renderListings();
-    }
-
-    function updateStats() {
-      const total = allItems.length;
-      const jobs = allItems.filter(i => i.source_type === 'job').length;
-      const freelance = allItems.filter(i => i.source_type === 'freelance').length;
-      const bids = allItems.filter(i => i.source_type === 'freelance' && (i.status === 'applied' || i.is_bid_success === 1)).length;
-      const won = allItems.filter(i => i.is_bid_success === 1).length;
-
-      document.getElementById('stat-total').innerText = total;
-      document.getElementById('stat-jobs').innerText = jobs;
-      document.getElementById('stat-freelance').innerText = freelance;
-      document.getElementById('stat-bids').innerText = bids;
-      document.getElementById('stat-won').innerText = won;
+    function updateMetrics() {
+      document.getElementById('stat-total').innerText = allItems.length;
+      document.getElementById('stat-jobs').innerText = allItems.filter(i => i.source_type === 'job').length;
+      document.getElementById('stat-freelance').innerText = allItems.filter(i => i.source_type === 'freelance').length;
+      document.getElementById('stat-bids').innerText = allItems.filter(i => i.status === 'applied' || i.is_bid_success === 1).length;
+      document.getElementById('stat-won').innerText = allItems.filter(i => i.is_bid_success === 1).length;
     }
 
     function setTab(tab) {
       activeTab = tab;
-      updateTabStyles();
-      renderListings();
-    }
-
-    function updateTabStyles() {
-      ['all', 'job', 'freelance', 'bids', 'applied'].forEach(t => {
-        const el = document.getElementById(`tab-${t}`);
-        if (el) {
-          if (activeTab === t) {
-            el.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white transition flex items-center gap-1.5 shadow-sm';
-          } else {
-            el.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1.5';
-          }
-        }
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-teal-600', 'text-white');
+        btn.classList.add('bg-slate-800', 'text-slate-400');
       });
-    }
-
-    function handleSearch() {
-      renderListings();
-    }
-
-    async function toggleBidSuccess(itemId, currentVal) {
-      const newVal = !currentVal;
-      try {
-        const res = await fetch(`/api/items/${itemId}/bid-success`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ is_bid_success: newVal })
-        });
-        const data = await res.json();
-        if (data.success) {
-          const item = allItems.find(i => i.id === itemId);
-          if (item) item.is_bid_success = newVal ? 1 : 0;
-          updateStats();
-          renderListings();
-        }
-      } catch (err) {
-        alert('Failed to update bid status: ' + err.message);
+      const activeEl = document.getElementById(`tab-${tab}`);
+      if (activeEl) {
+        activeEl.classList.add('bg-teal-600', 'text-white');
+        activeEl.classList.remove('bg-slate-800', 'text-slate-400');
       }
+      applyFilters();
     }
 
-    function renderListings() {
-      const q = document.getElementById('search-input').value.toLowerCase();
-      const container = document.getElementById('listing-container');
-      const emptyState = document.getElementById('empty-state');
+    function applyFilters() {
+      const q = (document.getElementById('search-input').value || '').toLowerCase();
+      currentFilterSource = document.getElementById('filter-source').value;
 
-      let filtered = allItems.filter(item => {
-        // Tab filtering
+      const filtered = allItems.filter(item => {
+        // Tab Filter
         if (activeTab === 'job' && item.source_type !== 'job') return false;
         if (activeTab === 'freelance' && item.source_type !== 'freelance') return false;
-        if (activeTab === 'bids') {
-          const isBid = item.source_type === 'freelance' && (item.status === 'applied' || item.is_bid_success === 1);
-          if (!isBid) return false;
-        }
+        if (activeTab === 'bids' && item.status !== 'applied' && item.is_bid_success !== 1) return false;
         if (activeTab === 'applied' && item.status !== 'applied') return false;
 
-        // Platform filter
-        if (currentFilterSource !== 'all' && item.platform_source !== currentFilterSource) return false;
-
-        // Search keyword
-        if (q) {
-          const matchTitle = item.title?.toLowerCase().includes(q);
-          const matchCompany = item.company?.toLowerCase().includes(q);
-          const matchSkills = item.skills?.toLowerCase().includes(q);
-          const matchDesc = item.description?.toLowerCase().includes(q);
-          const matchSource = item.platform_source?.toLowerCase().includes(q);
-          return matchTitle || matchCompany || matchSkills || matchDesc || matchSource;
+        // Platform Source Filter
+        if (currentFilterSource !== 'all') {
+          const itemSource = (item.platform_source || '').toLowerCase();
+          const targetSource = currentFilterSource.toLowerCase();
+          if (!itemSource.includes(targetSource)) return false;
         }
+
+        // Search Query Filter
+        if (q) {
+          const text = `${item.title} ${item.company || ''} ${item.skills || ''} ${item.description || ''} ${item.platform_source || ''}`.toLowerCase();
+          if (!text.includes(q)) return false;
+        }
+
         return true;
       });
 
-      if (filtered.length === 0) {
-        container.innerHTML = '';
-        emptyState.classList.remove('hidden');
+      renderItems(filtered);
+    }
+
+    function renderItems(items) {
+      const grid = document.getElementById('items-grid');
+      if (items.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full py-16 text-center text-slate-500 flex flex-col items-center">
+            <div class="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600 mb-3">
+              <i class="fa-solid fa-folder-open text-2xl"></i>
+            </div>
+            <p class="text-base font-semibold text-slate-300">No opportunities found</p>
+            <p class="text-xs text-slate-500 mt-1">Try tweaking your search or filter options</p>
+          </div>
+        `;
         return;
       }
 
-      emptyState.classList.add('hidden');
-      container.innerHTML = filtered.map(item => {
-        const isJob = item.source_type === 'job';
-        const typeBadgeClass = isJob ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-        const isWon = item.is_bid_success === 1;
-
+      grid.innerHTML = items.map(item => {
+        const isFreelance = item.source_type === 'freelance';
+        const typeBadgeClass = isFreelance 
+          ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
+          : 'bg-teal-500/10 text-teal-400 border-teal-500/20';
+        
         let statusBadge = '';
-        if (isWon) {
-          statusBadge = `<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1"><i class="fa-solid fa-trophy text-amber-400"></i> Bid Won / Success</span>`;
+        if (item.is_bid_success === 1) {
+          statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">🏆 Won / Success</span>`;
         } else if (item.status === 'applied') {
-          statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 flex items-center gap-1"><i class="fa-solid fa-check"></i> ${item.source_type === 'freelance' ? 'Bid Placed' : 'Applied'}</span>`;
-        } else if (item.status === 'applying') {
-          statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse"><i class="fa-solid fa-spinner fa-spin"></i> In Progress</span>`;
+          statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">⚡ Bid Placed</span>`;
+        } else if (item.status === 'skipped') {
+          statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700">Skipped (AI)</span>`;
         } else if (item.status === 'failed') {
-          statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">Failed</span>`;
+          statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30">Failed</span>`;
         }
 
-        const sourceLabel = item.platform_source || (isJob ? 'Job Board' : 'Projects.co.id');
-        const showBidToggle = item.source_type === 'freelance' || activeTab === 'bids';
+        const skillsArr = (item.skills || '').split(',').map(s => s.trim()).filter(Boolean);
+        const skillsHtml = skillsArr.slice(0, 3).map(s => 
+          `<span class="px-2 py-0.5 rounded bg-slate-800/80 text-slate-300 text-[11px] font-mono border border-slate-700/50">${s}</span>`
+        ).join('') + (skillsArr.length > 3 ? `<span class="text-[10px] text-slate-500 self-center">+${skillsArr.length - 3}</span>` : '');
+
+        const cardBorderClass = item.is_bid_success === 1 
+          ? 'border-emerald-500/50 bg-slate-900/90 shadow-emerald-500/10' 
+          : 'border-slate-800 hover:border-slate-700 bg-slate-900/60';
+
+        const platform = item.platform_source || 'Discord';
 
         return `
-          <div class="bg-slate-900 border ${isWon ? 'border-emerald-500/40 shadow-emerald-500/5' : 'border-slate-800 hover:border-slate-700'} transition rounded-2xl p-5 flex flex-col justify-between group shadow-sm hover:shadow-xl relative overflow-hidden">
-            ${isWon ? '<div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-emerald-500/20 to-transparent pointer-events-none"></div>' : ''}
+          <div class="group rounded-2xl border ${cardBorderClass} p-5 flex flex-col justify-between transition duration-200 hover:shadow-xl hover:shadow-black/40 relative">
             <div class="space-y-3">
               <div class="flex items-center justify-between gap-2">
                 <div class="flex items-center gap-1.5 flex-wrap">
-                  <span class="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${typeBadgeClass}">
+                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${typeBadgeClass}">
                     ${item.source_type}
                   </span>
-                  <span class="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800/80 text-slate-300 border border-slate-700/60">
-                    ${sourceLabel}
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                    ${platform}
                   </span>
                 </div>
                 ${statusBadge}
               </div>
 
               <div>
-                <h3 class="font-bold text-base text-white group-hover:text-teal-400 transition line-clamp-2 leading-snug">
+                <h4 class="text-base font-bold text-white group-hover:text-teal-400 transition line-clamp-2 leading-snug cursor-pointer" onclick="openDetailModal('${item.id}')">
                   ${item.title}
-                </h3>
-                <p class="text-xs text-slate-400 mt-1 flex items-center gap-1.5 truncate">
-                  <i class="fa-regular fa-building text-slate-500"></i> ${item.company || 'Direct Client'} 
-                  ${item.location ? `• <i class="fa-solid fa-location-dot text-slate-500"></i> ${item.location}` : ''}
+                </h4>
+                <p class="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+                  <i class="fa-regular fa-building text-[10px]"></i>
+                  <span>${item.company || 'Direct / Freelance Client'}</span>
                 </p>
               </div>
 
-              ${item.budget_salary ? `
-                <div class="bg-slate-950/60 border border-slate-800/80 px-3 py-1.5 rounded-xl text-xs font-semibold text-teal-400 flex items-center gap-1.5">
-                  <i class="fa-solid fa-money-bill-wave"></i> ${item.budget_salary}
-                </div>
-              ` : ''}
-
-              ${item.skills ? `
-                <div class="flex flex-wrap gap-1">
-                  ${item.skills.split(',').slice(0, 4).map(s => `
-                    <span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-medium">${s.replace(/[`']/g, '').trim()}</span>
-                  `).join('')}
-                </div>
-              ` : ''}
+              <div class="flex items-center justify-between text-xs py-2 px-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                <span class="text-slate-400 font-medium">Budget / Salary:</span>
+                <span class="font-bold text-teal-400">${item.budget_salary || 'Negotiable'}</span>
+              </div>
 
               <p class="text-xs text-slate-400 line-clamp-3 leading-relaxed">
-                ${item.description || 'No description available'}
+                ${item.description || 'No detailed description available.'}
               </p>
 
-              <!-- Success Bid Toggle Section (for Freelance / Bids) -->
-              ${showBidToggle ? `
-                <div class="pt-2 border-t border-slate-800/60 flex items-center justify-between">
-                  <div class="flex items-center gap-1.5 text-xs text-slate-400">
-                    <i class="fa-solid fa-trophy ${isWon ? 'text-emerald-400' : 'text-slate-600'}"></i>
-                    <span class="${isWon ? 'text-emerald-300 font-semibold' : ''}">Success Bid / Won</span>
-                  </div>
-                  <button onclick="toggleBidSuccess('${item.id}', ${isWon})" 
-                    class="px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${isWon ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 border border-slate-700'}">
-                    <i class="fa-solid ${isWon ? 'fa-circle-check' : 'fa-circle'}"></i>
-                    <span>${isWon ? 'Won' : 'Mark Won'}</span>
-                  </button>
-                </div>
-              ` : ''}
+              <div class="flex flex-wrap gap-1.5 pt-1">
+                ${skillsHtml}
+              </div>
             </div>
 
-            <div class="pt-4 mt-4 border-t border-slate-800 flex items-center justify-between gap-2">
-              <a href="${item.url || '#'}" target="_blank" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition" title="Open Link">
-                <i class="fa-solid fa-external-link text-sm"></i>
-              </a>
-              <button onclick="openApplyModal('${item.id}')" class="flex-1 py-2 px-4 rounded-xl bg-teal-600/10 hover:bg-teal-600 text-teal-400 hover:text-white text-xs font-bold border border-teal-500/20 hover:border-teal-600 transition flex items-center justify-center gap-1.5">
-                <i class="fa-solid fa-bolt"></i>
-                <span>${item.status === 'applied' ? (item.source_type === 'freelance' ? 'Re-Bid / Edit' : 'Re-Apply') : (item.source_type === 'freelance' ? 'Bid with AI' : 'Apply with AI')}</span>
-              </button>
+            <!-- Footer Actions -->
+            <div class="mt-5 pt-4 border-t border-slate-800/80 flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <button onclick="toggleBidSuccess('${item.id}', ${item.is_bid_success === 1 ? 0 : 1})" 
+                  title="${item.is_bid_success === 1 ? 'Mark as Not Won' : 'Mark as Won / Success'}"
+                  class="p-2 rounded-xl border ${item.is_bid_success === 1 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : 'bg-slate-800 hover:bg-slate-700 text-slate-400 border-slate-700'} text-xs font-semibold flex items-center gap-1 transition">
+                  <i class="fa-solid fa-trophy"></i>
+                  <span class="text-[10px] hidden sm:inline">${item.is_bid_success === 1 ? 'Won' : 'Mark Won'}</span>
+                </button>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button onclick="openDetailModal('${item.id}')" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition">
+                  View Detail
+                </button>
+                <button onclick="quickApply('${item.id}')" class="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-teal-600/20">
+                  <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                  <span>Apply</span>
+                </button>
+              </div>
             </div>
           </div>
         `;
       }).join('');
     }
 
-    async function openApplyModal(itemId) {
-      activeItem = allItems.find(i => i.id === itemId);
-      if (!activeItem) return;
-
-      document.getElementById('modal-type-badge').innerText = activeItem.source_type;
-      document.getElementById('modal-source-badge').innerText = activeItem.platform_source || 'Direct';
-      document.getElementById('modal-title').innerText = activeItem.title;
-      document.getElementById('modal-company').innerText = `${activeItem.company || 'Direct'} • ${activeItem.location || 'Remote'}`;
-      document.getElementById('modal-budget').innerText = activeItem.budget_salary || 'Not disclosed';
-      document.getElementById('modal-skills').innerText = activeItem.skills || 'Not specified';
-      document.getElementById('modal-description').innerText = activeItem.description || 'No description provided';
-      document.getElementById('modal-external-link').href = activeItem.url || '#';
-
-      const coverText = document.getElementById('modal-cover-letter');
-      coverText.value = activeItem.ai_cover_letter || '';
-
-      const logSection = document.getElementById('modal-log-section');
-      if (activeItem.apply_log) {
-        document.getElementById('modal-log').innerText = activeItem.apply_log;
-        logSection.classList.remove('hidden');
-      } else {
-        logSection.classList.add('hidden');
-      }
-
-      document.getElementById('apply-modal').classList.remove('hidden');
-
-      if (!activeItem.ai_cover_letter) {
-        coverText.value = 'Generating personalized AI proposal...';
-        try {
-          const res = await fetch(`/api/generate-cover-letter`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_id: activeItem.id })
-          });
-          const data = await res.json();
-          if (data.success) {
-            coverText.value = data.cover_letter || '';
-            activeItem.ai_cover_letter = data.cover_letter;
-          } else {
-            coverText.value = `Note: ${data.error || 'Silakan atur API Key di menu Settings untuk generate otomatis.'}`;
-          }
-        } catch (e) {
-          coverText.value = 'Failed to generate proposal: ' + e.message;
-        }
-      }
-    }
-
-    function closeApplyModal() {
-      document.getElementById('apply-modal').classList.add('hidden');
-      activeItem = null;
-    }
-
-    async function regenerateAIProposal() {
-      if (!activeItem) return;
-      const coverText = document.getElementById('modal-cover-letter');
-      coverText.value = 'Regenerating AI proposal...';
+    async function toggleBidSuccess(id, nextState) {
       try {
-        const res = await fetch(`/api/generate-cover-letter`, {
+        const res = await fetch(`/api/items/${id}/bid-success`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ item_id: activeItem.id })
+          body: JSON.stringify({ is_bid_success: nextState })
         });
         const data = await res.json();
         if (data.success) {
-          coverText.value = data.cover_letter || '';
-          activeItem.ai_cover_letter = data.cover_letter;
-        } else {
-          coverText.value = 'Failed: ' + (data.error || 'Cek AI Settings.');
+          const itm = allItems.find(x => x.id === id);
+          if (itm) itm.is_bid_success = data.is_bid_success;
+          updateMetrics();
+          applyFilters();
         }
-      } catch (e) {
-        coverText.value = 'Failed: ' + e.message;
+      } catch (err) {
+        alert('Failed to update bid status: ' + err.message);
+      }
+    }
+
+    function openDetailModal(id) {
+      const item = allItems.find(i => i.id === id);
+      if (!item) return;
+      currentSelectedItem = item;
+
+      document.getElementById('modal-title').innerText = item.title;
+      document.getElementById('modal-company').innerText = item.company || 'Direct / Freelance Client';
+      document.getElementById('modal-salary').innerText = item.budget_salary || 'Negotiable';
+      document.getElementById('modal-location').innerText = item.location || item.job_type || 'Remote';
+      document.getElementById('modal-category').innerText = item.category || '-';
+      document.getElementById('modal-desc').innerText = item.description || 'No description provided';
+      document.getElementById('modal-cover-letter').value = item.ai_cover_letter || '';
+      document.getElementById('modal-platform-badge').innerText = item.platform_source || 'Discord';
+
+      const typeBadge = document.getElementById('modal-type-badge');
+      typeBadge.innerText = item.source_type;
+      typeBadge.className = `px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${
+        item.source_type === 'freelance' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-teal-500/10 text-teal-400 border border-teal-500/20'
+      }`;
+
+      const statusBadge = document.getElementById('modal-status-badge');
+      statusBadge.innerText = (item.is_bid_success === 1 ? 'Won / Success' : item.status).toUpperCase();
+
+      const skillsCont = document.getElementById('modal-skills');
+      skillsCont.innerHTML = (item.skills || '').split(',').map(s => s.trim()).filter(Boolean).map(s =>
+        `<span class="px-2.5 py-1 rounded-lg bg-slate-950 text-slate-300 text-xs font-mono border border-slate-800">${s}</span>`
+      ).join('') || '<span class="text-xs text-slate-500">None specified</span>';
+
+      const logsCont = document.getElementById('modal-logs-section');
+      if (item.apply_log) {
+        logsCont.classList.remove('hidden');
+        document.getElementById('modal-logs').innerText = item.apply_log;
+      } else {
+        logsCont.classList.add('hidden');
+      }
+
+      const srcLink = document.getElementById('modal-source-link');
+      if (item.url) {
+        srcLink.href = item.url;
+        srcLink.classList.remove('hidden');
+      } else {
+        srcLink.classList.add('hidden');
+      }
+
+      document.getElementById('detail-modal').classList.remove('hidden');
+    }
+
+    function closeDetailModal() {
+      document.getElementById('detail-modal').classList.add('hidden');
+      currentSelectedItem = null;
+    }
+
+    async function generateAIProposal() {
+      if (!currentSelectedItem) return;
+      const btn = document.getElementById('btn-regen-ai');
+      const textarea = document.getElementById('modal-cover-letter');
+      btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Generating...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/generate-cover-letter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ item_id: currentSelectedItem.id })
+        });
+        const data = await res.json();
+        if (data.success) {
+          textarea.value = data.cover_letter;
+          currentSelectedItem.ai_cover_letter = data.cover_letter;
+        } else {
+          alert('Error: ' + data.message);
+        }
+      } catch (err) {
+        alert('Failed generating proposal: ' + err.message);
+      } finally {
+        btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Regenerate';
+        btn.disabled = false;
       }
     }
 
     async function executeAutoApply() {
-      if (!activeItem) return;
-      const btn = document.getElementById('btn-execute-apply');
+      if (!currentSelectedItem) return;
+      const btn = document.getElementById('modal-btn-apply');
       const coverLetter = document.getElementById('modal-cover-letter').value;
-      const origHtml = btn.innerHTML;
 
-      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Applying...`;
+      btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Applying...';
       btn.disabled = true;
-
-      const logSection = document.getElementById('modal-log-section');
-      const logEl = document.getElementById('modal-log');
-      logSection.classList.remove('hidden');
-      logEl.innerText = 'Initiating automation engine & browser worker...\n';
 
       try {
         const res = await fetch('/api/apply', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            item_id: activeItem.id,
+            item_id: currentSelectedItem.id,
             cover_letter: coverLetter
           })
         });
-        const result = await res.json();
-
-        logEl.innerText = result.log || 'Done.';
-        if (result.success) {
-          alert('Auto-Apply / Bid berhasil dikirim! Log audit diperbarui.');
+        const data = await res.json();
+        if (data.success) {
+          alert('Berhasil diapply! Cek riwayat bid di tab Bids.');
+          closeDetailModal();
+          loadData();
         } else {
-          alert('Application note: ' + (result.message || 'Check log details.'));
+          alert('Gagal apply: ' + data.error);
+          if (data.log) {
+            document.getElementById('modal-logs-section').classList.remove('hidden');
+            document.getElementById('modal-logs').innerText = data.log;
+          }
         }
-        await loadData();
       } catch (err) {
-        logEl.innerText += `\nError: ${err.message}`;
-        alert('Execution failed: ' + err.message);
+        alert('Apply execution error: ' + err.message);
       } finally {
-        btn.innerHTML = origHtml;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i><span>Auto-Apply Now</span>';
         btn.disabled = false;
       }
     }
 
-    // Profile Modal Handlers
+    function quickApply(id) {
+      openDetailModal(id);
+    }
+
+    // Profile Handlers
     async function openProfileModal() {
       try {
         const res = await fetch('/api/profile');
         const data = await res.json();
-        const p = data.profile || {};
-        document.getElementById('prof-name').value = p.full_name || '';
-        document.getElementById('prof-email').value = p.email || '';
-        document.getElementById('prof-phone').value = p.phone || '';
-        document.getElementById('prof-exp').value = p.experience_years || '';
-        document.getElementById('prof-linkedin').value = p.linkedin || '';
-        document.getElementById('prof-portfolio').value = p.portfolio || '';
-        document.getElementById('prof-skills').value = p.skills || '';
-        document.getElementById('prof-bio').value = p.bio || '';
+        if (data.success && data.profile) {
+          const p = data.profile;
+          document.getElementById('prof-name').value = p.full_name || '';
+          document.getElementById('prof-email').value = p.email || '';
+          document.getElementById('prof-phone').value = p.phone || '';
+          document.getElementById('prof-portfolio').value = p.portfolio || '';
+          document.getElementById('prof-github').value = p.github || '';
+          document.getElementById('prof-skills').value = p.skills || '';
+          document.getElementById('prof-bio').value = p.bio || '';
+        }
         document.getElementById('profile-modal').classList.remove('hidden');
       } catch (e) {
         alert('Failed loading profile: ' + e.message);
@@ -878,9 +900,8 @@
         full_name: document.getElementById('prof-name').value,
         email: document.getElementById('prof-email').value,
         phone: document.getElementById('prof-phone').value,
-        experience_years: document.getElementById('prof-exp').value,
-        linkedin: document.getElementById('prof-linkedin').value,
         portfolio: document.getElementById('prof-portfolio').value,
+        github: document.getElementById('prof-github').value,
         skills: document.getElementById('prof-skills').value,
         bio: document.getElementById('prof-bio').value
       };
@@ -892,14 +913,30 @@
           body: JSON.stringify(body)
         });
         const data = await res.json();
-        alert('Profile saved successfully!');
-        closeProfileModal();
+        if (data.success) {
+          alert('Profile berhasil disimpan!');
+          closeProfileModal();
+        }
       } catch (err) {
-        alert('Failed saving profile: ' + err.message);
+        alert('Gagal menyimpan profile: ' + err.message);
       }
     }
 
-    // Settings Modal Handlers
+    // Settings Handlers
+    function toggleApiKeyVisibility() {
+      const el = document.getElementById('set-api-key');
+      const icon = document.getElementById('eye-icon');
+      if (el.type === 'password') {
+        el.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      } else {
+        el.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      }
+    }
+
     async function openSettingsModal() {
       const alertBox = document.getElementById('test-alert');
       alertBox.classList.add('hidden');
@@ -909,7 +946,8 @@
         if (data.success) {
           const s = data.settings;
           document.getElementById('set-host').value = s.ai_host || 'https://9routers.cloudverra.com/v1';
-          document.getElementById('set-model-text').value = s.ai_model_text || 'ag/gemini-3.7-flash-high';
+          document.getElementById('set-model-filter').value = s.ai_model_filter || s.ai_model_text || 'ag/gemini-3.7-flash-high';
+          document.getElementById('set-model-proposal').value = s.ai_model_proposal || s.ai_model_text || 'ag/gemini-3.7-flash-high';
           document.getElementById('set-model-vision').value = s.ai_model_vision || 'ag/gemini-3.7-flash-high';
           
           const keyInput = document.getElementById('set-api-key');
@@ -948,24 +986,20 @@
         const res = await fetch('/api/models');
         const data = await res.json();
         if (data.success && data.models && data.models.length > 0) {
-          const textList = document.getElementById('model-text-list');
+          const filterList = document.getElementById('model-filter-list');
+          const proposalList = document.getElementById('model-proposal-list');
           const visionList = document.getElementById('model-vision-list');
           
-          let textOpts = '';
-          let visionOpts = '';
-          
+          let optionsHtml = '';
           data.models.forEach(m => {
-            textOpts += `<option value="${m.id}">${m.id}</option>`;
-            if (m.vision !== false) {
-              visionOpts += `<option value="${m.id}">${m.id}</option>`;
-            }
+            optionsHtml += `<option value="${m.id}">${m.id}</option>`;
           });
-          
-          textList.innerHTML = textOpts;
-          visionList.innerHTML = visionOpts;
+          if (filterList) filterList.innerHTML = optionsHtml;
+          if (proposalList) proposalList.innerHTML = optionsHtml;
+          if (visionList) visionList.innerHTML = optionsHtml;
         }
-      } catch (e) {
-        console.log('Model list load info:', e.message);
+      } catch (err) {
+        console.warn('Could not pull models from host:', err.message);
       }
     }
 
@@ -973,55 +1007,42 @@
       document.getElementById('settings-modal').classList.add('hidden');
     }
 
-    function toggleApiKeyVisibility() {
-      const input = document.getElementById('set-api-key');
-      const icon = document.getElementById('eye-icon');
-      if (input.type === 'password') {
-        input.type = 'text';
-        icon.className = 'fa-solid fa-eye-slash';
-      } else {
-        input.type = 'password';
-        icon.className = 'fa-solid fa-eye';
-      }
-    }
-
     async function testAIConfig() {
-      const btn = document.getElementById('btn-test-ai');
-      const origHtml = btn.innerHTML;
       const alertBox = document.getElementById('test-alert');
-
-      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>Testing...</span>`;
+      const btn = document.getElementById('btn-test-ai');
+      btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Testing...';
       btn.disabled = true;
-      alertBox.classList.add('hidden');
 
-      const body = {
-        ai_host: document.getElementById('set-host').value,
-        ai_api_key: document.getElementById('set-api-key').value,
-        ai_model_text: document.getElementById('set-model-text').value
-      };
+      alertBox.className = 'p-3 rounded-xl text-xs border bg-slate-900 border-slate-700 text-slate-300';
+      alertBox.innerText = 'Menguji koneksi ke AI Host & Model...';
+      alertBox.classList.remove('hidden');
 
       try {
+        const payload = {
+          ai_host: document.getElementById('set-host').value,
+          ai_api_key: document.getElementById('set-api-key').value,
+          ai_model_proposal: document.getElementById('set-model-proposal').value,
+          ai_model_filter: document.getElementById('set-model-filter').value
+        };
+
         const res = await fetch('/api/settings/test', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
-        
-        alertBox.classList.remove('hidden');
         if (data.success) {
-          alertBox.className = 'p-3 rounded-xl text-xs bg-emerald-500/10 border-emerald-500/30 text-emerald-400 flex items-center gap-2';
-          alertBox.innerHTML = `<i class="fa-solid fa-circle-check"></i> <div><strong>Koneksi Berhasil!</strong> Respons model: "${data.response}"</div>`;
+          alertBox.className = 'p-3 rounded-xl text-xs border bg-emerald-500/10 border-emerald-500/20 text-emerald-400';
+          alertBox.innerHTML = `<strong>Koneksi Sukses!</strong> Respons: "${data.response}"`;
         } else {
-          alertBox.className = 'p-3 rounded-xl text-xs bg-rose-500/10 border-rose-500/30 text-rose-400 flex items-center gap-2';
-          alertBox.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> <div><strong>Koneksi Gagal:</strong> ${data.error}</div>`;
+          alertBox.className = 'p-3 rounded-xl text-xs border bg-rose-500/10 border-rose-500/20 text-rose-400';
+          alertBox.innerHTML = `<strong>Koneksi Gagal:</strong> ${data.error}`;
         }
       } catch (err) {
-        alertBox.classList.remove('hidden');
-        alertBox.className = 'p-3 rounded-xl text-xs bg-rose-500/10 border-rose-500/30 text-rose-400 flex items-center gap-2';
-        alertBox.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> <div><strong>Error:</strong> ${err.message}</div>`;
+        alertBox.className = 'p-3 rounded-xl text-xs border bg-rose-500/10 border-rose-500/20 text-rose-400';
+        alertBox.innerHTML = `<strong>Error:</strong> ${err.message}`;
       } finally {
-        btn.innerHTML = origHtml;
+        btn.innerHTML = '<i class="fa-solid fa-vial"></i><span>Test AI Connection</span>';
         btn.disabled = false;
       }
     }
@@ -1031,7 +1052,8 @@
       const body = {
         ai_host: document.getElementById('set-host').value,
         ai_api_key: document.getElementById('set-api-key').value,
-        ai_model_text: document.getElementById('set-model-text').value,
+        ai_model_filter: document.getElementById('set-model-filter').value,
+        ai_model_proposal: document.getElementById('set-model-proposal').value,
         ai_model_vision: document.getElementById('set-model-vision').value,
         projectscoid_user: document.getElementById('set-projectscoid-user').value,
         projectscoid_pass: document.getElementById('set-projectscoid-pass').value,

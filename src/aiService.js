@@ -8,13 +8,15 @@ function getAIConfig() {
   host = host.replace(/\/+$/, '');
 
   const apiKey = settings.ai_api_key || process.env.AI_API_KEY || process.env.NINEROUTER_API_KEY || '';
-  const modelText = settings.ai_model_text || process.env.AI_MODEL_TEXT || 'ag/gemini-3.7-flash-high';
-  const modelVision = settings.ai_model_vision || process.env.AI_MODEL_VISION || 'ag/gemini-3.7-flash-high';
+  const modelFilter = settings.ai_model_filter || settings.ai_model_text || 'ag/gemini-3.7-flash-high';
+  const modelProposal = settings.ai_model_proposal || settings.ai_model_text || 'ag/gemini-3.7-flash-high';
+  const modelVision = settings.ai_model_vision || 'ag/gemini-3.7-flash-high';
 
   return {
     host,
     apiKey,
-    modelText,
+    modelFilter,
+    modelProposal,
     modelVision
   };
 }
@@ -31,8 +33,10 @@ async function testAIConnection(configOverride = null) {
     'Authorization': `Bearer ${config.apiKey}`
   };
 
+  const testModel = config.modelProposal || config.modelFilter || 'ag/gemini-3.7-flash-high';
+
   const response = await axios.post(endpoint, {
-    model: config.modelText,
+    model: testModel,
     messages: [{ role: 'user', content: 'Say "AI Connected Successfully" in 4 words.' }],
     max_tokens: 30
   }, {
@@ -68,10 +72,7 @@ async function fetchAvailableModels(configOverride = null) {
 }
 
 /**
- * AI Classifier to strictly determine if a project matches:
- * 1. Fix Bug Website
- * 2. Development System Website
- * Exclusively for WEBSITE ecosystem.
+ * AI Classifier using modelFilter to strictly evaluate project eligibility based solely on user prompt & criteria.
  */
 async function classifyProjectForAutoBid(item) {
   const config = getAIConfig();
@@ -79,25 +80,15 @@ async function classifyProjectForAutoBid(item) {
     return { match: false, category: 'Unconfigured AI', reason: 'API Key AI belum diset di Settings' };
   }
 
-  const customFilterRule = getSetting('autobid_custom_prompt', '');
+  const customFilterRule = getSetting('autobid_custom_prompt', 'Hanya terima proyek yang berkaitan dengan perbaikan bug website (PHP, Laravel, WordPress, Next.js, React, Python, Vue, HTML/CSS/JS, API) atau pengembangan sistem website (Web application, backend, frontend, portal, SaaS web). Tolak proyek mobile app murni, video, desain grafis, adsense, voice over, penulisan artikel, sosmed.');
 
-  const prompt = `Anda adalah kurator proyek freelance Full Stack & Web Developer spesialis website.
-Tugas Anda mengevaluasi secara cerdas dan ketat apakah proyek ini LAYAK di-bid otomatis.
+  const prompt = `Anda adalah kurator dan evaluator proyek freelance AI.
+Tugas Anda mengevaluasi secara objektif apakah proyek lowongan ini LAYAK diterima sesuai dengan ATURAN DAN KRITERIA FILTER di bawah:
 
-KRITERIA WAJIB PENERIMAAN (HANYA TERIMA JIKA MEMENUHI SALAH SATU DI BAWAH):
-1. Fix Bug Website: Perbaikan bug, error, debugging, perbaikan script/database/plugin/tema, crash, atau troubleshooting pada website.
-2. Development System Website: Pembuatan website baru, pengembangan modul web, backend API web, frontend web, integrasi sistem website, dashboard, CMS, atau SaaS berbasis web.
-3. KHUSUS WEBSITE SAJA: Ekosistem web (PHP, Laravel, WordPress, Next.js, React, Node.js, Python/Django/Flask, Vue, CodeIgniter, Express, HTML/CSS/JS, Tailwind, PostgreSQL/MySQL, REST API Web).
+ATURAN & KRITERIA PENYARINGAN:
+${customFilterRule}
 
-LARANGAN KERAS (Wajib tolak match: false):
-- Proyek mobile app murni (Android/iOS/Flutter/Kotlin/Swift) KECUALI integrasi backend/REST API web.
-- Desain grafis murni, logo, banner, canva, animasi tanpa coding web.
-- Video editing, YouTube, TikTok, voice over, audio/musik.
-- Penulisan artikel, SEO copywriting murni, data entry, tugas kuliah/makalah.
-- Jual beli akun AdSense, domain, akun sosmed, akun game.
-${customFilterRule ? `Aturan Filter Tambahan:\n${customFilterRule}` : ''}
-
-DETAIL PROYEK:
+DETAIL PROYEK / LOWONGAN:
 - Judul: ${item.title}
 - Platform: ${item.platform_source || 'Projects.co.id'}
 - Kategori/Skills: ${item.category || ''} | ${item.skills || ''}
@@ -105,16 +96,16 @@ DETAIL PROYEK:
 - Deskripsi:
 ${item.description || 'Tidak ada deskripsi detail'}
 
-KEMBALIKAN OUTPUT DALAM FORMAT JSON VALID SAJA:
+KEMBALIKAN OUTPUT DALAM FORMAT JSON VALID SAJA (TANPA PENJELASAN LAIN DI LUAR JSON):
 {
   "match": true / false,
-  "category": "Fix Bug Website" | "Development System Website" | "Other / Rejected",
+  "category": "Nama Kategori / Scope yang Cocok",
   "reason": "Alasan singkat padat (1 kalimat bahasa Indonesia)"
 }`;
 
   try {
     const res = await axios.post(`${config.host}/chat/completions`, {
-      model: config.modelText,
+      model: config.modelFilter,
       stream: false,
       messages: [{ role: 'user', content: prompt }]
     }, {
@@ -131,7 +122,7 @@ KEMBALIKAN OUTPUT DALAM FORMAT JSON VALID SAJA:
       const parsed = JSON.parse(jsonMatch[0]);
       return {
         match: Boolean(parsed.match),
-        category: parsed.category || 'Other / Rejected',
+        category: parsed.category || 'Evaluated',
         reason: parsed.reason || 'Selesai dianalisis AI'
       };
     }
@@ -178,7 +169,7 @@ Hanya kembalikan teks proposal siap kirim (tanpa pembuka basa-basi seperti "Beri
 
   try {
     const res = await axios.post(`${config.host}/chat/completions`, {
-      model: config.modelText,
+      model: config.modelProposal,
       stream: false,
       messages: [{ role: 'user', content: prompt }]
     }, {
@@ -254,7 +245,7 @@ Format JSON: {"score": 85, "reason": "Keahlian React dan Node.js sangat cocok de
 
   try {
     const res = await axios.post(`${config.host}/chat/completions`, {
-      model: config.modelText,
+      model: config.modelFilter,
       stream: false,
       messages: [{ role: 'user', content: prompt }]
     }, {

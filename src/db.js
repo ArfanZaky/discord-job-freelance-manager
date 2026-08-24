@@ -84,16 +84,14 @@ db.exec(`
 
   -- Seed default settings if not exist
   INSERT OR IGNORE INTO settings (key, value) VALUES 
-    ('ai_host', 'https://api.openai.com/v1'),
+    ('ai_host', 'https://9routers.cloudverra.com/v1'),
     ('ai_api_key', ''),
-    ('ai_model_text', 'gpt-4o-mini'),
-    ('ai_model_vision', 'gpt-4o-mini'),
+    ('ai_model_filter', 'ag/gemini-3.7-flash-high'),
+    ('ai_model_proposal', 'ag/gemini-3.7-flash-high'),
+    ('ai_model_vision', 'ag/gemini-3.7-flash-high'),
     ('projectscoid_user', 'AzakyHifdillah'),
     ('projectscoid_pass', '456321987Azaky'),
     ('autobid_enabled', '0'),
-    ('autobid_filter_fix_bug', '1'),
-    ('autobid_filter_dev_system', '1'),
-    ('autobid_filter_website_only', '1'),
     ('autobid_custom_prompt', 'Hanya terima proyek yang berkaitan dengan perbaikan bug website (PHP, Laravel, WordPress, Next.js, React, Python, Vue, HTML/CSS/JS, API) atau pengembangan sistem website (Web application, backend, frontend, portal, SaaS web). Tolak proyek mobile app murni, video, desain grafis, adsense, voice over, penulisan artikel, sosmed.'),
     ('autobid_bid_prompt', 'Buat proposal penawaran yang to the point, profesional, dan meyakinkan. Jelaskan pemahaman teknis singkat mengenai masalah atau sistem yang akan dibangun, sebutkan stack teknologi relevan yang dikuasai, tawarkan estimasi waktu realistis, serta jaminan pengerjaan rapi dan siap revisi.');
 `);
@@ -107,22 +105,25 @@ function getSetting(key, fallback = '') {
 function getAllSettings() {
   const rows = db.prepare('SELECT key, value FROM settings').all();
   const res = {
-    ai_host: 'https://api.openai.com/v1',
+    ai_host: 'https://9routers.cloudverra.com/v1',
     ai_api_key: '',
-    ai_model_text: 'gpt-4o-mini',
-    ai_model_vision: 'gpt-4o-mini',
+    ai_model_filter: 'ag/gemini-3.7-flash-high',
+    ai_model_proposal: 'ag/gemini-3.7-flash-high',
+    ai_model_vision: 'ag/gemini-3.7-flash-high',
     projectscoid_user: 'AzakyHifdillah',
     projectscoid_pass: '456321987Azaky',
     autobid_enabled: '0',
-    autobid_filter_fix_bug: '1',
-    autobid_filter_dev_system: '1',
-    autobid_filter_website_only: '1',
     autobid_custom_prompt: 'Hanya terima proyek yang berkaitan dengan perbaikan bug website (PHP, Laravel, WordPress, Next.js, React, Python, Vue, HTML/CSS/JS, API) atau pengembangan sistem website (Web application, backend, frontend, portal, SaaS web). Tolak proyek mobile app murni, video, desain grafis, adsense, voice over, penulisan artikel, sosmed.',
     autobid_bid_prompt: 'Buat proposal penawaran yang to the point, profesional, dan meyakinkan. Jelaskan pemahaman teknis singkat mengenai masalah atau sistem yang akan dibangun, sebutkan stack teknologi relevan yang dikuasai, tawarkan estimasi waktu realistis, serta jaminan pengerjaan rapi dan siap revisi.'
   };
   rows.forEach(r => {
     res[r.key] = r.value;
   });
+
+  // Handle legacy keys fallback
+  if (!res.ai_model_filter && res.ai_model_text) res.ai_model_filter = res.ai_model_text;
+  if (!res.ai_model_proposal && res.ai_model_text) res.ai_model_proposal = res.ai_model_text;
+
   return res;
 }
 
