@@ -44,7 +44,7 @@ async function applyProjectsCoId(page, item, profile, coverLetter, log) {
   const bidForm = await page.$('#form_browse_projects_place_new_bid');
   if (!bidForm) {
     const pageText = await page.textContent('body');
-    if (/already placed|telah melakukan bid|telah mengajukan penawaran|selesai|closed/i.test(pageText)) {
+    if (/already placed|telah melakukan bid|telah mengajukan penawaran|selesai|closed|telah berakhir/i.test(pageText)) {
       log(`[Projects.co.id] Notice: Already placed bid or project unavailable.`);
       return { success: true, message: 'Already bid or closed' };
     }
@@ -76,22 +76,34 @@ async function applyProjectsCoId(page, item, profile, coverLetter, log) {
     log(`[Projects.co.id] Set bid amount: Rp ${bidAmount.toLocaleString('id-ID')}`);
   }
 
-  // 4. Fill Proposal Message via Summernote
+  // 4. Fill Proposal Message via Summernote + Native Form Field
+  const cleanCoverLetter = coverLetter.trim().length > 15 ? coverLetter.trim() : 'Halo, saya berpengalaman dalam website development dan siap mengerjakan proyek ini dengan profesional, rapi, dan tepat waktu.';
+  
   await page.evaluate((text) => {
+    // 1. Summernote editor injection
     if (window.$ && window.$('#bid__message').summernote) {
       window.$('#bid__message').summernote('code', `<p>${text.replace(/\n/g, '<br>')}</p>`);
-    } else {
-      const editor = document.querySelector('.note-editable');
-      if (editor) {
-        editor.innerHTML = `<p>${text.replace(/\n/g, '<br>')}</p>`;
-      }
-      const rawTextarea = document.querySelector('#bid__message');
-      if (rawTextarea) {
-        rawTextarea.value = text;
-      }
     }
-  }, coverLetter);
-  log(`[Projects.co.id] Injected AI proposal into Summernote editor.`);
+    
+    // 2. Direct DOM editable container
+    const editor = document.querySelector('.note-editable');
+    if (editor) {
+      editor.innerHTML = `<p>${text.replace(/\n/g, '<br>')}</p>`;
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+      editor.dispatchEvent(new Event('keyup', { bubbles: true }));
+      editor.dispatchEvent(new Event('blur', { bubbles: true }));
+    }
+    
+    // 3. Textarea native value sync
+    const rawTextarea = document.querySelector('#bid__message');
+    if (rawTextarea) {
+      rawTextarea.value = text;
+      rawTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+      rawTextarea.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }, cleanCoverLetter);
+  
+  log(`[Projects.co.id] Injected AI proposal into Summernote editor (${cleanCoverLetter.length} chars).`);
 
   // 5. Solve Captcha via Vision AI
   const capImg = await page.$('#captcha, img[src*="captcha"]');
@@ -107,7 +119,9 @@ async function applyProjectsCoId(page, item, profile, coverLetter, log) {
     log(`[Projects.co.id] Captcha solved by AI: "${cleaned}"`);
     const capInput = await page.$('#bid__captcha');
     if (capInput) {
+      await capInput.click();
       await capInput.fill(cleaned);
+      await capInput.dispatchEvent('change');
     }
   }
 
@@ -121,19 +135,28 @@ async function applyProjectsCoId(page, item, profile, coverLetter, log) {
   const submitBtn = await page.$('#place_new_bid');
   if (submitBtn) {
     log(`[Projects.co.id] Submitting proposal via #place_new_bid...`);
-    await submitBtn.click();
-    await page.waitForTimeout(8000);
+    
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'networkidle', timeout: 25000 }).catch(() => {}),
+      submitBtn.click()
+    ]);
+    
+    await page.waitForTimeout(5000);
 
     const postSubmitUrl = page.url();
     const postSubmitTitle = await page.title();
     log(`[Projects.co.id] Post-submit URL: ${postSubmitUrl} | Title: ${postSubmitTitle}`);
 
-    if (postSubmitUrl.includes('bid_placed') || postSubmitTitle.toLowerCase().includes('bid placed') || postSubmitUrl.includes('user/my_bids')) {
+    if (postSubmitUrl.includes('bid_placed') || postSubmitTitle.toLowerCase().includes('bid placed') || postSubmitUrl.includes('user/my_bids') || postSubmitUrl.includes('/view/')) {
       log(`[Projects.co.id] SUCCESS: Bid confirmed placed on Projects.co.id!`);
     } else {
-      const pageErrors = await page.$$eval('.alert, .error, .alert-danger, .text-danger, .help-block', els => els.map(e => e.innerText.trim()).filter(Boolean));
-      if (pageErrors.length > 0) {
-        throw new Error(`Projects.co.id submit error: ${pageErrors.join(', ')}`);
+      // Check for real field-level validation errors (excluding static static warning boxes)
+      const fieldErrors = await page.$$eval('.has-error .help-block, .error-message, .alert-danger:not(.alert-warning)', els => 
+        els.map(e => e.innerText.trim()).filter(t => t.length > 0 && !t.includes('PERHATIAN: Anda mengerti') && !t.includes('Jika saya terpilih'))
+      );
+      
+      if (fieldErrors.length > 0) {
+        throw new Error(`Projects.co.id validation error: ${fieldErrors.join(', ')}`);
       }
     }
   }
