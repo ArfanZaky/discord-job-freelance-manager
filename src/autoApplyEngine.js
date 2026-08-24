@@ -76,43 +76,43 @@ async function applyProjectsCoId(page, item, profile, coverLetter, log) {
     log(`[Projects.co.id] Set bid amount: Rp ${bidAmount.toLocaleString('id-ID')}`);
   }
 
-  // 4. Fill Proposal Message via Summernote + Native Form Field
+  // 4. Fill Proposal Message via Summernote API
   const cleanCoverLetter = coverLetter.trim().length > 15 ? coverLetter.trim() : 'Halo, saya berpengalaman dalam website development dan siap mengerjakan proyek ini dengan profesional, rapi, dan tepat waktu.';
   
   await page.evaluate((text) => {
-    // 1. Summernote editor injection
-    if (window.$ && window.$('#bid__message').summernote) {
-      window.$('#bid__message').summernote('code', `<p>${text.replace(/\n/g, '<br>')}</p>`);
+    const wrappedHtml = `<div>${text.replace(/\n/g, '<br>')}</div>`;
+    
+    // Older Summernote API support on Projects.co.id
+    if (window.jQuery) {
+      if (typeof window.jQuery('#bid__message').code === 'function') {
+        window.jQuery('#bid__message').code(wrappedHtml);
+      } else if (typeof window.jQuery('#bid__message').summernote === 'function') {
+        window.jQuery('#bid__message').summernote('code', wrappedHtml);
+      }
     }
     
-    // 2. Direct DOM editable container
-    const editor = document.querySelector('.note-editable');
-    if (editor) {
-      editor.innerHTML = `<p>${text.replace(/\n/g, '<br>')}</p>`;
-      editor.dispatchEvent(new Event('input', { bubbles: true }));
-      editor.dispatchEvent(new Event('keyup', { bubbles: true }));
-      editor.dispatchEvent(new Event('blur', { bubbles: true }));
-    }
-    
-    // 3. Textarea native value sync
+    // DOM textarea sync
     const rawTextarea = document.querySelector('#bid__message');
     if (rawTextarea) {
-      rawTextarea.value = text;
-      rawTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-      rawTextarea.dispatchEvent(new Event('change', { bubbles: true }));
+      rawTextarea.value = wrappedHtml;
     }
   }, cleanCoverLetter);
   
   log(`[Projects.co.id] Injected AI proposal into Summernote editor (${cleanCoverLetter.length} chars).`);
 
-  // 5. Solve Captcha via Vision AI
+  // 5. Solve Captcha via Vision AI with Clue Text
   const capImg = await page.$('#captcha, img[src*="captcha"]');
   if (capImg) {
-    log(`[Projects.co.id] Captcha image detected. Capturing screenshot...`);
+    const clueText = await page.$eval('#captcha_text', el => el.innerText.trim()).catch(() => '');
+    log(`[Projects.co.id] Captcha image detected. Site clue: "${clueText}". Capturing screenshot...`);
+    
     const screenshotBuf = await capImg.screenshot();
     const base64 = screenshotBuf.toString('base64');
     
-    const captchaPrompt = 'Tuliskan teks captcha di gambar ini secara persis (hanya 1 atau 2 kata). Hanya balas teks tanpa penjelasan/tanda petik.';
+    const captchaPrompt = `Ini adalah gambar captcha dari Projects.co.id dengan petunjuk: "Tulis nama ${clueText} ini".
+Tolong baca dan pecahkan teks captcha pada gambar tersebut berdasarkan petunjuk di atas. 
+Balas HANYA kata/teks captcha persisnya (lowercase/sesuai yang terbaca), tanpa tanda kutip, tanpa penjelasan lain.`;
+
     const solvedCaptcha = await solveCaptchaWithVision(base64, captchaPrompt);
     const cleaned = solvedCaptcha.replace(/[^a-zA-Z0-9 ]/g, '').trim();
     
@@ -150,9 +150,8 @@ async function applyProjectsCoId(page, item, profile, coverLetter, log) {
     if (postSubmitUrl.includes('bid_placed') || postSubmitTitle.toLowerCase().includes('bid placed') || postSubmitUrl.includes('user/my_bids') || postSubmitUrl.includes('/view/')) {
       log(`[Projects.co.id] SUCCESS: Bid confirmed placed on Projects.co.id!`);
     } else {
-      // Check for real field-level validation errors (excluding static static warning boxes)
-      const fieldErrors = await page.$$eval('.has-error .help-block, .error-message, .alert-danger:not(.alert-warning)', els => 
-        els.map(e => e.innerText.trim()).filter(t => t.length > 0 && !t.includes('PERHATIAN: Anda mengerti') && !t.includes('Jika saya terpilih'))
+      const fieldErrors = await page.$$eval('.has-error .help-block, .error-message', els => 
+        els.map(e => e.innerText.trim()).filter(t => t.length > 0)
       );
       
       if (fieldErrors.length > 0) {
