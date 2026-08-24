@@ -218,14 +218,41 @@
       </div>
 
       <!-- Action & Filter Bar for Notifications -->
-      <div class="flex items-center justify-between p-4 bg-slate-900/70 border border-slate-800 rounded-2xl">
-        <div class="flex items-center gap-3">
-          <span class="text-xs text-slate-400">Projects.co.id Account: <strong id="notif-user-tag" class="text-white font-mono">AzakyHifdillah</strong></span>
-          <span id="notif-sync-badge" class="text-[10px] text-slate-500">Last synced: Just now</span>
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 bg-slate-900/70 border border-slate-800 rounded-2xl">
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- Source Filter Tabs for Notifications -->
+          <div class="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
+            <button id="notif-filter-projects" onclick="setNotifSource('Projects.co.id')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 text-white transition flex items-center gap-1.5 shadow-sm">
+              <img src="https://projects.co.id/favicon.ico" class="w-3.5 h-3.5 rounded-full" onerror="this.style.display='none'">
+              <span>Projects.co.id</span>
+              <span class="px-1.5 py-0.2 text-[10px] bg-amber-800 text-amber-200 rounded-full font-bold" id="notif-badge-projects">25</span>
+            </button>
+            <button onclick="alert('Upwork Notification Sync - Coming Soon!')" class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition flex items-center gap-1.5 cursor-not-allowed opacity-60" title="Coming Soon">
+              <i class="fa-brands fa-upwork text-emerald-400"></i>
+              <span>Upwork</span>
+              <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Soon</span>
+            </button>
+            <button onclick="alert('Freelancer.com Notification Sync - Coming Soon!')" class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition flex items-center gap-1.5 cursor-not-allowed opacity-60" title="Coming Soon">
+              <i class="fa-solid fa-bolt text-sky-400"></i>
+              <span>Freelancer</span>
+              <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Soon</span>
+            </button>
+            <button onclick="alert('Fiverr Notification Sync - Coming Soon!')" class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition flex items-center gap-1.5 cursor-not-allowed opacity-60" title="Coming Soon">
+              <i class="fa-solid fa-circle-check text-green-400"></i>
+              <span>Fiverr</span>
+              <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Soon</span>
+            </button>
+          </div>
+
+          <div class="text-xs text-slate-400 hidden lg:flex items-center gap-2 pl-2 border-l border-slate-800">
+            <span>Account: <strong id="notif-user-tag" class="text-white font-mono">AzakyHifdillah</strong></span>
+            <span id="notif-sync-badge" class="text-[10px] text-slate-500">(Synced)</span>
+          </div>
         </div>
-        <button id="btn-sync-notifs" onclick="syncNotificationsNow()" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-amber-600/20">
+
+        <button id="btn-sync-notifs" onclick="syncNotificationsNow()" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-amber-600/20 shrink-0">
           <i class="fa-solid fa-arrows-rotate"></i>
-          <span>Sync Notif Now</span>
+          <span>Sync Projects.co.id</span>
         </button>
       </div>
 
@@ -956,6 +983,15 @@
       }).join('');
     }
 
+    
+    function setNotifSource(src) {
+      if (src === 'Projects.co.id') {
+        renderNotificationsView();
+      } else {
+        alert(src + ' notification integration is coming soon!');
+      }
+    }
+  
     function renderNotificationsView() {
       document.getElementById('stat-pesta').innerText = notifStats.pesta_points || '0';
       document.getElementById('stat-worker').innerText = notifStats.worker_points || '211';
