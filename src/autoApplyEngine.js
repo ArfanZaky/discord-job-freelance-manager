@@ -4,7 +4,7 @@ chromium.use(stealth);
 
 const db = require('./db');
 const { getSetting } = require('./db');
-const { generateCoverLetter, solveCaptchaWithVision } = require('./aiService');
+const { generateCoverLetter, solveCaptchaWithVision, classifyProjectForAutoBid } = require('./aiService');
 
 /**
  * Handle automated bidding specifically for Projects.co.id
@@ -53,6 +53,7 @@ async function applyProjectsCoId(page, item, profile, coverLetter, log) {
 
   // 3. Fill Bid Amount
   const amountInput = await page.$('#bid__amount');
+  let finalBidAmount = '1000000';
   if (amountInput) {
     let bidAmount = 0;
     const minVal = await amountInput.getAttribute('min');
@@ -62,13 +63,14 @@ async function applyProjectsCoId(page, item, profile, coverLetter, log) {
       const minNum = parseInt(minVal, 10) || 0;
       const maxNum = parseInt(maxVal, 10) || minNum;
       bidAmount = minNum > 0 ? Math.round((minNum + maxNum) / 2) : maxNum;
-    } else if (item.budget) {
-      const nums = item.budget.replace(/[^0-9]/g, '');
+    } else if (item.budget_salary) {
+      const nums = item.budget_salary.replace(/[^0-9]/g, '');
       bidAmount = parseInt(nums, 10) || 1000000;
     } else {
       bidAmount = 1000000;
     }
 
+    finalBidAmount = String(bidAmount);
     await amountInput.click({ clickCount: 3 });
     await amountInput.fill(String(bidAmount));
     log(`[Projects.co.id] Set bid amount: Rp ${bidAmount.toLocaleString('id-ID')}`);
@@ -126,7 +128,7 @@ async function applyProjectsCoId(page, item, profile, coverLetter, log) {
     const postSubmitTitle = await page.title();
     log(`[Projects.co.id] Post-submit URL: ${postSubmitUrl} | Title: ${postSubmitTitle}`);
 
-    if (postSubmitUrl.includes('bid_placed') || postSubmitTitle.toLowerCase().includes('bid placed')) {
+    if (postSubmitUrl.includes('bid_placed') || postSubmitTitle.toLowerCase().includes('bid placed') || postSubmitUrl.includes('user/my_bids')) {
       log(`[Projects.co.id] SUCCESS: Bid confirmed placed on Projects.co.id!`);
     } else {
       const pageErrors = await page.$$eval('.alert, .error, .alert-danger, .text-danger, .help-block', els => els.map(e => e.innerText.trim()).filter(Boolean));
@@ -136,7 +138,7 @@ async function applyProjectsCoId(page, item, profile, coverLetter, log) {
     }
   }
 
-  return { success: true, message: 'Bid submitted successfully to Projects.co.id' };
+  return { success: true, bidAmount: finalBidAmount, message: 'Bid submitted successfully to Projects.co.id' };
 }
 
 /**
@@ -178,6 +180,7 @@ async function applyToJob(itemId, customProposal = null) {
   }
 
   let browser;
+  let applyResult = { success: true };
   try {
     log(`Launching browser with stealth mode...`);
 
@@ -201,7 +204,7 @@ async function applyToJob(itemId, customProposal = null) {
 
     // Check if target is Projects.co.id
     if (item.url.includes('projects.co.id') || item.platform_source === 'Projects.co.id') {
-      await applyProjectsCoId(page, item, profile, coverLetter, log);
+      applyResult = await applyProjectsCoId(page, item, profile, coverLetter, log);
     } else {
       // General job application handler
       log(`Navigating to ${item.url}...`);
@@ -234,11 +237,13 @@ async function applyToJob(itemId, customProposal = null) {
     log(`Application routine completed successfully.`);
     const finalLog = logEntries.join('\n');
 
-    db.prepare('UPDATE items SET status = ?, apply_log = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-      .run('applied', finalLog, itemId);
+    const bidAmt = applyResult.bidAmount ? `Rp ${parseInt(applyResult.bidAmount).toLocaleString('id-ID')}` : (item.bid_amount || '');
+
+    db.prepare('UPDATE items SET status = ?, bid_amount = ?, apply_log = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .run('applied', bidAmt, finalLog, itemId);
 
     await browser.close();
-    return { success: true, log: finalLog, coverLetter };
+    return { success: true, log: finalLog, coverLetter, bidAmount: bidAmt };
 
   } catch (err) {
     if (browser) await browser.close();
@@ -253,6 +258,108 @@ async function applyToJob(itemId, customProposal = null) {
   }
 }
 
+/**
+ * Auto-Bid Pipeline Worker:
+ * Evaluates pending Projects.co.id freelance items with AI classifier
+ * If matches website bugfix/development, automatically places bid.
+ */
+let isAutoBidWorkerRunning = false;
+
+async function runAutoBidRoutine(limit = 3) {
+  if (isAutoBidWorkerRunning) {
+    console.log('[AutoBid Routine] Already running, skipping concurrent run.');
+    return { processed: 0, status: 'already_running' };
+  }
+
+  const enabled = getSetting('autobid_enabled', '0') === '1';
+  if (!enabled) {
+    console.log('[AutoBid Routine] Auto-bid is disabled in settings.');
+    return { processed: 0, status: 'disabled' };
+  }
+
+  isAutoBidWorkerRunning = true;
+  console.log('[AutoBid Routine] Scanning un-evaluated Projects.co.id freelance projects...');
+
+  try {
+    // Find un-evaluated Projects.co.id freelance items
+    const candidates = db.prepare(`
+      SELECT * FROM items 
+      WHERE (platform_source = 'Projects.co.id' OR url LIKE '%projects.co.id%')
+        AND status IN ('new', 'analyzed')
+        AND auto_bid_evaluated = 0
+      ORDER BY datetime(created_at) DESC
+      LIMIT ?
+    `).all(limit);
+
+    console.log(`[AutoBid Routine] Found ${candidates.length} candidates.`);
+    let processed = 0;
+
+    for (const item of candidates) {
+      console.log(`[AutoBid Routine] Evaluating item [${item.id}] "${item.title}" with AI...`);
+      
+      const classification = await classifyProjectForAutoBid(item);
+      console.log(`[AutoBid Routine] Result: match=${classification.match}, category="${classification.category}", reason="${classification.reason}"`);
+
+      db.prepare(`
+        UPDATE items SET
+          auto_bid_evaluated = 1,
+          auto_bid_matched = ?,
+          auto_bid_category = ?,
+          auto_bid_reason = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(
+        classification.match ? 1 : 0,
+        classification.category,
+        classification.reason,
+        item.id
+      );
+
+      if (classification.match) {
+        console.log(`[AutoBid Routine] MATCHED! Auto-placing bid on "${item.title}"...`);
+        
+        // Log to autobid_logs
+        const logRes = db.prepare(`
+          INSERT INTO autobid_logs (item_id, item_title, matched, category, reason, status, details)
+          VALUES (?, ?, 1, ?, ?, 'bidding', 'Triggered auto bid execution')
+        `).run(item.id, item.title, classification.category, classification.reason);
+
+        const result = await applyToJob(item.id);
+        
+        db.prepare(`
+          UPDATE autobid_logs SET
+            status = ?,
+            details = ?
+          WHERE id = ?
+        `).run(
+          result.success ? 'bid_success' : 'bid_failed',
+          result.success ? 'Bid placed successfully' : (result.error || 'Failed'),
+          logRes.lastInsertRowid
+        );
+
+        processed++;
+      } else {
+        console.log(`[AutoBid Routine] SKIPPED: Does not match website bugfix/development criteria.`);
+        db.prepare(`
+          INSERT INTO autobid_logs (item_id, item_title, matched, category, reason, status, details)
+          VALUES (?, ?, 0, ?, ?, 'skipped', 'AI filtered out')
+        `).run(item.id, item.title, classification.category, classification.reason);
+      }
+
+      // Small delay between evaluations
+      await new Promise(r => setTimeout(r, 2000));
+    }
+
+    return { processed, totalCandidates: candidates.length, status: 'completed' };
+  } catch (err) {
+    console.error('[AutoBid Routine] Exception occurred:', err);
+    return { error: err.message, status: 'error' };
+  } finally {
+    isAutoBidWorkerRunning = false;
+  }
+}
+
 module.exports = {
-  applyToJob
+  applyToJob,
+  runAutoBidRoutine
 };

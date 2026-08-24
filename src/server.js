@@ -9,7 +9,7 @@ const db = require('./db');
 const { getAllSettings, setSetting } = require('./db');
 const { syncAllChannels } = require('./discordScraper');
 const { generateCoverLetter, analyzeJobMatch, testAIConnection } = require('./aiService');
-const { applyToJob } = require('./autoApplyEngine');
+const { applyToJob, runAutoBidRoutine } = require('./autoApplyEngine');
 
 const app = express();
 const PORT = process.env.APP_PORT || 5220;
@@ -96,7 +96,7 @@ app.post('/api/profile', (req, res) => {
   }
 });
 
-// 5. Settings API (AI + Projects.co.id & Platforms)
+// 5. Settings API (AI + Projects.co.id & Platform Automations)
 app.get('/api/settings', (req, res) => {
   try {
     const settings = getAllSettings();
@@ -126,7 +126,13 @@ app.post('/api/settings', (req, res) => {
       ai_model_text,
       ai_model_vision,
       projectscoid_user,
-      projectscoid_pass
+      projectscoid_pass,
+      autobid_enabled,
+      autobid_filter_fix_bug,
+      autobid_filter_dev_system,
+      autobid_filter_website_only,
+      autobid_custom_prompt,
+      autobid_bid_prompt
     } = req.body;
     
     if (ai_host !== undefined) setSetting('ai_host', ai_host.trim());
@@ -140,6 +146,14 @@ app.post('/api/settings', (req, res) => {
     if (projectscoid_pass !== undefined && projectscoid_pass !== '********') {
       setSetting('projectscoid_pass', projectscoid_pass.trim());
     }
+
+    // Auto-bid configs & prompts
+    if (autobid_enabled !== undefined) setSetting('autobid_enabled', autobid_enabled ? '1' : '0');
+    if (autobid_filter_fix_bug !== undefined) setSetting('autobid_filter_fix_bug', autobid_filter_fix_bug ? '1' : '0');
+    if (autobid_filter_dev_system !== undefined) setSetting('autobid_filter_dev_system', autobid_filter_dev_system ? '1' : '0');
+    if (autobid_filter_website_only !== undefined) setSetting('autobid_filter_website_only', autobid_filter_website_only ? '1' : '0');
+    if (autobid_custom_prompt !== undefined) setSetting('autobid_custom_prompt', autobid_custom_prompt.trim());
+    if (autobid_bid_prompt !== undefined) setSetting('autobid_bid_prompt', autobid_bid_prompt.trim());
 
     res.json({ success: true, message: 'Settings saved successfully' });
   } catch (err) {
@@ -167,15 +181,25 @@ app.post('/api/settings/test', async (req, res) => {
   }
 });
 
+// Trigger Auto-Bid routine manually or test
+app.post('/api/autobid/run-now', async (req, res) => {
+  try {
+    const result = await runAutoBidRoutine(3);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // 6. Generate AI Cover Letter / Proposal
 app.post('/api/generate-cover-letter', async (req, res) => {
   try {
-    const { item_id } = req.body;
+    const { item_id, prompt_override } = req.body;
     const item = db.prepare('SELECT * FROM items WHERE id = ?').get(item_id);
     if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
 
     const profile = db.prepare('SELECT * FROM user_profile WHERE id = 1').get();
-    const coverLetter = await generateCoverLetter(item, profile);
+    const coverLetter = await generateCoverLetter(item, profile, prompt_override);
 
     db.prepare('UPDATE items SET ai_cover_letter = ? WHERE id = ?').run(coverLetter, item_id);
 
@@ -202,8 +226,15 @@ cron.schedule(`*/${cronInterval} * * * *`, async () => {
   console.log(`[Cron Runner] Checking Discord channels for new jobs & freelance listings...`);
   try {
     await syncAllChannels();
+    
+    // Check if auto-bid is enabled and execute
+    const autobidEnabled = getAllSettings().autobid_enabled === '1';
+    if (autobidEnabled) {
+      console.log('[Cron Runner] Auto-Bid active. Running AI Auto-Bid pipeline...');
+      await runAutoBidRoutine(3);
+    }
   } catch (err) {
-    console.error('[Cron Runner] Error syncing Discord:', err.message);
+    console.error('[Cron Runner] Error during cron cycle:', err.message);
   }
 });
 

@@ -29,12 +29,16 @@ db.exec(`
     description TEXT,
     raw_payload TEXT,
     platform_source TEXT DEFAULT 'Discord',
-    status TEXT DEFAULT 'new', -- 'new', 'analyzed', 'applying', 'applied', 'failed', 'rejected'
+    status TEXT DEFAULT 'new', -- 'new', 'analyzed', 'applying', 'applied', 'failed', 'rejected', 'skipped'
     ai_summary TEXT,
     ai_cover_letter TEXT,
     apply_log TEXT,
     is_bid_success INTEGER DEFAULT 0,
     bid_amount TEXT,
+    auto_bid_evaluated INTEGER DEFAULT 0,
+    auto_bid_matched INTEGER DEFAULT 0,
+    auto_bid_category TEXT,
+    auto_bid_reason TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
@@ -42,7 +46,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS user_profile (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     full_name TEXT DEFAULT 'Arfan Zaky Hifdillah',
-    email TEXT DEFAULT 'arfanzaky@cloudverra.com',
+    email DEFAULT 'arfanzaky@cloudverra.com',
     phone TEXT DEFAULT '+6281234567890',
     linkedin TEXT DEFAULT 'https://linkedin.com/in/arfanzaky',
     github TEXT DEFAULT 'https://github.com/ArfanZaky',
@@ -63,30 +67,36 @@ db.exec(`
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
+  CREATE TABLE IF NOT EXISTS autobid_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id TEXT,
+    item_title TEXT,
+    matched INTEGER,
+    category TEXT,
+    reason TEXT,
+    status TEXT, -- 'matched_and_bid', 'skipped', 'bid_failed', 'bid_success'
+    details TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
   -- Seed default profile if not exists
   INSERT OR IGNORE INTO user_profile (id) VALUES (1);
 
-  -- Seed default AI settings if not exist
+  -- Seed default settings if not exist
   INSERT OR IGNORE INTO settings (key, value) VALUES 
     ('ai_host', 'https://api.openai.com/v1'),
     ('ai_api_key', ''),
     ('ai_model_text', 'gpt-4o-mini'),
-    ('ai_model_vision', 'gpt-4o-mini');
+    ('ai_model_vision', 'gpt-4o-mini'),
+    ('projectscoid_user', 'AzakyHifdillah'),
+    ('projectscoid_pass', '456321987Azaky'),
+    ('autobid_enabled', '0'),
+    ('autobid_filter_fix_bug', '1'),
+    ('autobid_filter_dev_system', '1'),
+    ('autobid_filter_website_only', '1'),
+    ('autobid_custom_prompt', 'Hanya terima proyek yang berkaitan dengan perbaikan bug website (PHP, Laravel, WordPress, Next.js, React, Python, Vue, HTML/CSS/JS, API) atau pengembangan sistem website (Web application, backend, frontend, portal, SaaS web). Tolak proyek mobile app murni, video, desain grafis, adsense, voice over, penulisan artikel, sosmed.'),
+    ('autobid_bid_prompt', 'Buat proposal penawaran yang to the point, profesional, dan meyakinkan. Jelaskan pemahaman teknis singkat mengenai masalah atau sistem yang akan dibangun, sebutkan stack teknologi relevan yang dikuasai, tawarkan estimasi waktu realistis, serta jaminan pengerjaan rapi dan siap revisi.');
 `);
-
-// Check if migration needed for existing table
-try {
-  const tableInfo = db.prepare(`PRAGMA table_info(items)`).all();
-  const columnNames = tableInfo.map(c => c.name);
-  if (!columnNames.includes('is_bid_success')) {
-    db.prepare(`ALTER TABLE items ADD COLUMN is_bid_success INTEGER DEFAULT 0`).run();
-  }
-  if (!columnNames.includes('bid_amount')) {
-    db.prepare(`ALTER TABLE items ADD COLUMN bid_amount TEXT`).run();
-  }
-} catch (e) {
-  console.error('Migration error:', e.message);
-}
 
 // Helpers for settings key-value
 function getSetting(key, fallback = '') {
@@ -100,7 +110,15 @@ function getAllSettings() {
     ai_host: 'https://api.openai.com/v1',
     ai_api_key: '',
     ai_model_text: 'gpt-4o-mini',
-    ai_model_vision: 'gpt-4o-mini'
+    ai_model_vision: 'gpt-4o-mini',
+    projectscoid_user: 'AzakyHifdillah',
+    projectscoid_pass: '456321987Azaky',
+    autobid_enabled: '0',
+    autobid_filter_fix_bug: '1',
+    autobid_filter_dev_system: '1',
+    autobid_filter_website_only: '1',
+    autobid_custom_prompt: 'Hanya terima proyek yang berkaitan dengan perbaikan bug website (PHP, Laravel, WordPress, Next.js, React, Python, Vue, HTML/CSS/JS, API) atau pengembangan sistem website (Web application, backend, frontend, portal, SaaS web). Tolak proyek mobile app murni, video, desain grafis, adsense, voice over, penulisan artikel, sosmed.',
+    autobid_bid_prompt: 'Buat proposal penawaran yang to the point, profesional, dan meyakinkan. Jelaskan pemahaman teknis singkat mengenai masalah atau sistem yang akan dibangun, sebutkan stack teknologi relevan yang dikuasai, tawarkan estimasi waktu realistis, serta jaminan pengerjaan rapi dan siap revisi.'
   };
   rows.forEach(r => {
     res[r.key] = r.value;
@@ -112,7 +130,7 @@ function setSetting(key, value) {
   db.prepare(`
     INSERT INTO settings (key, value) VALUES (?, ?)
     ON CONFLICT(key) DO UPDATE SET value = excluded.value
-  `).run(key, String(value || ''));
+  `).run(key, String(value ?? ''));
 }
 
 module.exports = db;
