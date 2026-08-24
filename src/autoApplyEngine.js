@@ -16,14 +16,19 @@ async function applyProjectsCoId(page, item, profile, coverLetter, log) {
   log(`[Projects.co.id] Authenticating session for user: ${username}...`);
   
   // 1. Visit Login Page
-  await page.goto('https://projects.co.id/public/home/login', { waitUntil: 'networkidle', timeout: 30000 });
+  await page.goto('https://projects.co.id/public/home/login', { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForTimeout(2000);
   
   const userField = await page.$('#LoginActivity__user_name');
   if (userField) {
     await userField.fill(username);
     await page.fill('#LoginActivity__password', password);
-    await page.click('button[type="submit"]');
-    await page.waitForTimeout(5000);
+    await Promise.all([
+      page.waitForURL('https://projects.co.id/**', { timeout: 15000 }).catch(() => {}),
+      page.click('button[type="submit"]')
+    ]);
+    await page.waitForTimeout(3000);
+    log(`[Projects.co.id] Logged in successfully. Current URL: ${page.url()}`);
   }
 
   // 2. Navigate directly to Place New Bid page
@@ -33,13 +38,13 @@ async function applyProjectsCoId(page, item, profile, coverLetter, log) {
   }
 
   log(`[Projects.co.id] Navigating to bid form: ${bidUrl}`);
-  await page.goto(bidUrl, { waitUntil: 'networkidle', timeout: 30000 });
+  await page.goto(bidUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForTimeout(3000);
 
   const bidForm = await page.$('#form_browse_projects_place_new_bid');
   if (!bidForm) {
-    // Check if already placed bid or project closed
     const pageText = await page.textContent('body');
-    if (/already placed|telah melakukan bid|selesai|closed/i.test(pageText)) {
+    if (/already placed|telah melakukan bid|telah mengajukan penawaran|selesai|closed/i.test(pageText)) {
       log(`[Projects.co.id] Notice: Already placed bid or project unavailable.`);
       return { success: true, message: 'Already bid or closed' };
     }
@@ -54,22 +59,26 @@ async function applyProjectsCoId(page, item, profile, coverLetter, log) {
     const maxVal = await amountInput.getAttribute('max');
     
     if (minVal && maxVal) {
-      // Calculate realistic middle or lower bound
       const minNum = parseInt(minVal, 10) || 0;
       const maxNum = parseInt(maxVal, 10) || minNum;
       bidAmount = minNum > 0 ? Math.round((minNum + maxNum) / 2) : maxNum;
+    } else if (item.budget) {
+      const nums = item.budget.replace(/[^0-9]/g, '');
+      bidAmount = parseInt(nums, 10) || 1000000;
+    } else {
+      bidAmount = 1000000;
     }
 
-    if (bidAmount > 0) {
-      await amountInput.fill(String(bidAmount));
-      log(`[Projects.co.id] Set bid amount: Rp ${bidAmount.toLocaleString('id-ID')}`);
-    }
+    await amountInput.click({ clickCount: 3 });
+    await amountInput.fill(String(bidAmount));
+    log(`[Projects.co.id] Set bid amount: Rp ${bidAmount.toLocaleString('id-ID')}`);
   }
 
-  // 4. Fill Proposal Message (Summernote rich text & hidden textarea)
-  const summernoteEditable = await page.$('.note-editable');
-  if (summernoteEditable) {
-    await page.evaluate((text) => {
+  // 4. Fill Proposal Message via Summernote
+  await page.evaluate((text) => {
+    if (window.$ && window.$('#bid__message').summernote) {
+      window.$('#bid__message').summernote('code', `<p>${text.replace(/\n/g, '<br>')}</p>`);
+    } else {
       const editor = document.querySelector('.note-editable');
       if (editor) {
         editor.innerHTML = `<p>${text.replace(/\n/g, '<br>')}</p>`;
@@ -78,14 +87,9 @@ async function applyProjectsCoId(page, item, profile, coverLetter, log) {
       if (rawTextarea) {
         rawTextarea.value = text;
       }
-    }, coverLetter);
-    log(`[Projects.co.id] Injected AI proposal into Summernote editor.`);
-  } else {
-    const rawTextarea = await page.$('#bid__message');
-    if (rawTextarea) {
-      await rawTextarea.fill(coverLetter);
     }
-  }
+  }, coverLetter);
+  log(`[Projects.co.id] Injected AI proposal into Summernote editor.`);
 
   // 5. Solve Captcha via Vision AI
   const capImg = await page.$('#captcha, img[src*="captcha"]');
@@ -94,25 +98,42 @@ async function applyProjectsCoId(page, item, profile, coverLetter, log) {
     const screenshotBuf = await capImg.screenshot();
     const base64 = screenshotBuf.toString('base64');
     
-    const captchaPrompt = 'Tuliskan teks jawaban yang ada di dalam gambar captcha ini secara tepat. Hanya balas teks tanpa penjelasan.';
+    const captchaPrompt = 'Tuliskan teks captcha di gambar ini secara persis (hanya 1 atau 2 kata). Hanya balas teks tanpa penjelasan/tanda petik.';
     const solvedCaptcha = await solveCaptchaWithVision(base64, captchaPrompt);
+    const cleaned = solvedCaptcha.replace(/[^a-zA-Z0-9 ]/g, '').trim();
     
-    log(`[Projects.co.id] Captcha solved by AI: "${solvedCaptcha}"`);
+    log(`[Projects.co.id] Captcha solved by AI: "${cleaned}"`);
     const capInput = await page.$('#bid__captcha');
     if (capInput) {
-      await capInput.fill(solvedCaptcha.trim().toLowerCase());
+      await capInput.fill(cleaned);
     }
   }
+
+  // Handle confirmation dialogs
+  page.on('dialog', async dialog => {
+    log(`[Projects.co.id] Dialog popped up: ${dialog.message()}`);
+    await dialog.accept();
+  });
 
   // 6. Submit the Bid
   const submitBtn = await page.$('#place_new_bid');
   if (submitBtn) {
     log(`[Projects.co.id] Submitting proposal via #place_new_bid...`);
     await submitBtn.click();
-    await page.waitForTimeout(6000);
+    await page.waitForTimeout(8000);
 
     const postSubmitUrl = page.url();
-    log(`[Projects.co.id] Post-submit URL: ${postSubmitUrl}`);
+    const postSubmitTitle = await page.title();
+    log(`[Projects.co.id] Post-submit URL: ${postSubmitUrl} | Title: ${postSubmitTitle}`);
+
+    if (postSubmitUrl.includes('bid_placed') || postSubmitTitle.toLowerCase().includes('bid placed')) {
+      log(`[Projects.co.id] SUCCESS: Bid confirmed placed on Projects.co.id!`);
+    } else {
+      const pageErrors = await page.$$eval('.alert, .error, .alert-danger, .text-danger, .help-block', els => els.map(e => e.innerText.trim()).filter(Boolean));
+      if (pageErrors.length > 0) {
+        throw new Error(`Projects.co.id submit error: ${pageErrors.join(', ')}`);
+      }
+    }
   }
 
   return { success: true, message: 'Bid submitted successfully to Projects.co.id' };
