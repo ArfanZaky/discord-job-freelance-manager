@@ -47,113 +47,89 @@
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-teal-500 selection:text-white">
 
   <!-- Top Navbar -->
-  <header class="bg-slate-900/80 backdrop-blur border-b border-slate-800 sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
-          <i class="fa-solid fa-briefcase text-white text-lg"></i>
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <h1 class="text-base sm:text-lg font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-              Job & Freelance Manager
-            </h1>
-            <span id="badge-autobid" class="hidden text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              ⚡ Auto-Bid ON
-            </span>
+  <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand & Section Switcher -->
+      <div class="flex items-center gap-6">
+        <div class="flex items-center gap-3 cursor-pointer" onclick="setMainSection('jobs')">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
+            <i class="fa-solid fa-briefcase text-white text-lg"></i>
           </div>
-          <p class="text-xs text-slate-400">Automated Opportunity Ingestion & AI Auto-Bid</p>
+          <div class="hidden sm:block">
+            <div class="flex items-center gap-2">
+              <h1 class="text-base font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                Career & Bid Manager
+              </h1>
+              <span id="badge-autobid" class="hidden text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                ⚡ Auto-Bid ON
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-400">Automated Discord Ingestion & AI Automation</p>
+          </div>
         </div>
+
+        <!-- Primary Main Menus: JOBS vs FREELANCE -->
+        <nav class="flex items-center p-1 bg-slate-950 border border-slate-800 rounded-xl">
+          <button id="nav-btn-jobs" onclick="setMainSection('jobs')" 
+            class="px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-teal-600 text-white shadow-md shadow-teal-600/20">
+            <i class="fa-solid fa-building"></i>
+            <span>Jobs Manager</span>
+            <span id="nav-count-jobs" class="text-[10px] px-1.5 py-0.2 rounded-full bg-black/30 font-mono">0</span>
+          </button>
+
+          <button id="nav-btn-freelance" onclick="setMainSection('freelance')" 
+            class="px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-900">
+            <i class="fa-solid fa-laptop-code text-amber-400"></i>
+            <span>Freelance & Bids</span>
+            <span id="nav-count-freelance" class="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-800 font-mono text-amber-400">0</span>
+          </button>
+        </nav>
       </div>
 
       <!-- Action Buttons -->
       <div class="flex items-center gap-2.5">
-        <button onclick="openSettingsModal()" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-medium border border-slate-700 transition flex items-center gap-2">
+        <button onclick="openSettingsModal()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium border border-slate-700 transition flex items-center gap-2">
           <i class="fa-solid fa-gear text-teal-400"></i>
-          <span class="hidden sm:inline">Settings & Accounts</span>
+          <span class="hidden md:inline">Settings & Accounts</span>
         </button>
-        <button onclick="openProfileModal()" class="px-3.5 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-sm font-medium transition flex items-center gap-2 shadow-lg shadow-teal-600/20">
+        <button onclick="openProfileModal()" class="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-xs font-medium transition flex items-center gap-2 shadow-lg shadow-teal-600/20">
           <i class="fa-solid fa-user-gear"></i>
-          <span class="hidden sm:inline">Profile</span>
+          <span class="hidden md:inline">Profile & CV</span>
         </button>
       </div>
     </div>
   </header>
 
   <!-- Main Content Container -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
 
-    <!-- Metrics Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
-        <div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Listings</p>
-          <h3 id="stat-total" class="text-2xl font-bold mt-1 text-white">0</h3>
+    <!-- Dynamic Context Header Banner -->
+    <div id="section-banner" class="bg-gradient-to-r from-slate-900 via-slate-900/80 to-slate-950 p-5 rounded-2xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2">
+          <span id="banner-icon" class="text-xl text-teal-400">
+            <i class="fa-solid fa-building"></i>
+          </span>
+          <h2 id="banner-title" class="text-lg font-bold text-white">Full-Time & Contract Jobs</h2>
         </div>
-        <div class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-          <i class="fa-solid fa-list-check text-xl"></i>
-        </div>
+        <p id="banner-desc" class="text-xs text-slate-400 mt-1">
+          Peluang kerja full-time, part-time, dan kontrak. Lengkap dengan riwayat lamaran yang sudah diajukan.
+        </p>
       </div>
 
-      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
-        <div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Full-time Jobs</p>
-          <h3 id="stat-jobs" class="text-2xl font-bold mt-1 text-teal-400">0</h3>
-        </div>
-        <div class="w-12 h-12 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
-          <i class="fa-solid fa-building text-xl"></i>
-        </div>
-      </div>
-
-      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
-        <div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Freelance</p>
-          <h3 id="stat-freelance" class="text-2xl font-bold mt-1 text-amber-400">0</h3>
-        </div>
-        <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-          <i class="fa-solid fa-laptop-code text-xl"></i>
-        </div>
-      </div>
-
-      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
-        <div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Bids</p>
-          <h3 id="stat-bids" class="text-2xl font-bold mt-1 text-indigo-400">0</h3>
-        </div>
-        <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-          <i class="fa-solid fa-gavel text-xl"></i>
-        </div>
-      </div>
-
-      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
-        <div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Won / Success</p>
-          <h3 id="stat-won" class="text-2xl font-bold mt-1 text-emerald-400">0</h3>
-        </div>
-        <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-          <i class="fa-solid fa-trophy text-xl"></i>
-        </div>
+      <!-- Dynamic Sub-Metrics for Active Section -->
+      <div id="section-metrics" class="flex items-center gap-3">
+        <!-- Injected via JS based on Jobs vs Freelance -->
       </div>
     </div>
 
-    <!-- Filters & Search Bar -->
+    <!-- Sub-Tabs Navigation & Filters Bar -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800/80">
-      <div class="flex flex-wrap items-center gap-2">
-        <button onclick="setTab('all')" id="tab-all" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-teal-600 text-white transition">
-          All Listings
-        </button>
-        <button onclick="setTab('job')" id="tab-job" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition">
-          💼 Jobs
-        </button>
-        <button onclick="setTab('freelance')" id="tab-freelance" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition">
-          🚀 Freelance
-        </button>
-        <button onclick="setTab('bids')" id="tab-bids" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition flex items-center gap-1.5">
-          <i class="fa-solid fa-gavel text-indigo-400"></i> Bids
-        </button>
-        <button onclick="setTab('applied')" id="tab-applied" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white transition">
-          ✅ Applied
-        </button>
+      
+      <!-- Sub-Tabs (Different for Jobs vs Freelance) -->
+      <div id="subtabs-container" class="flex flex-wrap items-center gap-2">
+        <!-- Injected dynamically via JS -->
       </div>
 
       <!-- Source Platform Filter Dropdown & Search -->
@@ -188,12 +164,12 @@
       <!-- Loading Skeleton -->
       <div class="col-span-full py-16 text-center text-slate-500 flex flex-col items-center">
         <div class="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
-        <p class="mt-4 text-sm font-medium">Fetching job listings...</p>
+        <p class="mt-4 text-sm font-medium">Loading opportunities...</p>
       </div>
     </div>
   </main>
 
-  <!-- Job Detail & Apply Modal -->
+  <!-- Job Detail & Apply / Bid Modal -->
   <div id="detail-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
       <!-- Modal Header -->
@@ -245,19 +221,19 @@
         <!-- Generated Cover Letter / Proposal -->
         <div class="space-y-2">
           <div class="flex items-center justify-between">
-            <h4 class="text-xs font-bold uppercase text-teal-400 tracking-wider flex items-center gap-2">
-              <i class="fa-solid fa-wand-magic-sparkles"></i> AI Cover Letter / Proposal
+            <h4 id="modal-ai-pitch-title" class="text-xs font-bold uppercase text-teal-400 tracking-wider flex items-center gap-2">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> AI Proposal / Cover Letter
             </h4>
             <button id="btn-regen-ai" onclick="generateAIProposal()" class="text-xs text-teal-400 hover:text-teal-300 flex items-center gap-1">
               <i class="fa-solid fa-arrows-rotate"></i> Regenerate
             </button>
           </div>
           <textarea id="modal-cover-letter" rows="5" 
-            placeholder="AI proposal will be generated here automatically..." 
+            placeholder="AI content will be generated here automatically..." 
             class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs text-slate-200 focus:outline-none focus:border-teal-500 font-mono leading-relaxed custom-scrollbar"></textarea>
         </div>
 
-        <!-- Automation Logs (if applied) -->
+        <!-- Automation Logs (if applied / bid) -->
         <div id="modal-logs-section" class="hidden space-y-2">
           <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider">Execution Logs</h4>
           <pre id="modal-logs" class="p-3 bg-black/60 rounded-xl text-[11px] font-mono text-emerald-400 whitespace-pre-wrap overflow-x-auto border border-slate-800"></pre>
@@ -276,7 +252,7 @@
           </button>
           <button id="modal-btn-apply" onclick="executeAutoApply()" class="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-xs font-bold text-white transition flex items-center gap-2 shadow-lg shadow-teal-600/30">
             <i class="fa-solid fa-paper-plane"></i>
-            <span>Auto-Apply Now</span>
+            <span id="modal-btn-apply-text">Auto-Apply Now</span>
           </button>
         </div>
       </div>
@@ -534,7 +510,8 @@
 
   <script>
     let allItems = [];
-    let activeTab = 'all'; // 'all', 'job', 'freelance', 'bids', 'applied'
+    let currentMainSection = 'jobs'; // 'jobs' or 'freelance'
+    let activeSubTab = 'all'; // For Jobs: 'all', 'applied'. For Freelance: 'all', 'bids', 'won'
     let currentFilterSource = 'all';
     let currentSelectedItem = null;
 
@@ -544,8 +521,8 @@
         const data = await res.json();
         if (data.success) {
           allItems = data.items;
-          updateMetrics();
-          applyFilters();
+          updateNavigationCounts();
+          updateSectionView();
         }
       } catch (err) {
         console.error('Error loading data:', err);
@@ -569,23 +546,128 @@
       }
     }
 
-    function updateMetrics() {
-      document.getElementById('stat-total').innerText = allItems.length;
-      document.getElementById('stat-jobs').innerText = allItems.filter(i => i.source_type === 'job').length;
-      document.getElementById('stat-freelance').innerText = allItems.filter(i => i.source_type === 'freelance').length;
-      document.getElementById('stat-bids').innerText = allItems.filter(i => i.status === 'applied' || i.is_bid_success === 1).length;
-      document.getElementById('stat-won').innerText = allItems.filter(i => i.is_bid_success === 1).length;
+    function updateNavigationCounts() {
+      const jobCount = allItems.filter(i => i.source_type === 'job').length;
+      const freelanceCount = allItems.filter(i => i.source_type === 'freelance').length;
+
+      document.getElementById('nav-count-jobs').innerText = jobCount;
+      document.getElementById('nav-count-freelance').innerText = freelanceCount;
     }
 
-    function setTab(tab) {
-      activeTab = tab;
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('bg-teal-600', 'text-white');
+    function setMainSection(section) {
+      currentMainSection = section;
+      activeSubTab = 'all'; // reset to 'all' when switching main section
+
+      const btnJobs = document.getElementById('nav-btn-jobs');
+      const btnFreelance = document.getElementById('nav-btn-freelance');
+
+      if (section === 'jobs') {
+        btnJobs.className = 'px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-teal-600 text-white shadow-md shadow-teal-600/20';
+        btnFreelance.className = 'px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-900';
+      } else {
+        btnFreelance.className = 'px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-amber-600 text-white shadow-md shadow-amber-600/20';
+        btnJobs.className = 'px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-900';
+      }
+
+      updateSectionView();
+    }
+
+    function updateSectionView() {
+      const bannerIcon = document.getElementById('banner-icon');
+      const bannerTitle = document.getElementById('banner-title');
+      const bannerDesc = document.getElementById('banner-desc');
+      const sectionMetrics = document.getElementById('section-metrics');
+      const subtabsContainer = document.getElementById('subtabs-container');
+
+      if (currentMainSection === 'jobs') {
+        // Jobs Configuration
+        bannerIcon.innerHTML = '<i class="fa-solid fa-building text-teal-400"></i>';
+        bannerTitle.innerText = '💼 Jobs & Career Opportunities';
+        bannerDesc.innerText = 'Daftar lowongan kerja full-time, part-time & kontrak beserta riwayat lamaran yang sudah diapply.';
+
+        const totalJobs = allItems.filter(i => i.source_type === 'job').length;
+        const appliedJobs = allItems.filter(i => i.source_type === 'job' && i.status === 'applied').length;
+        const newJobs = allItems.filter(i => i.source_type === 'job' && i.status !== 'applied').length;
+
+        sectionMetrics.innerHTML = `
+          <div class="bg-slate-950/80 border border-slate-800 px-4 py-2.5 rounded-xl text-center min-w-[100px]">
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">Total Jobs</span>
+            <span class="text-base font-bold text-teal-400">${totalJobs}</span>
+          </div>
+          <div class="bg-slate-950/80 border border-slate-800 px-4 py-2.5 rounded-xl text-center min-w-[100px]">
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">New Jobs</span>
+            <span class="text-base font-bold text-slate-200">${newJobs}</span>
+          </div>
+          <div class="bg-slate-950/80 border border-slate-800 px-4 py-2.5 rounded-xl text-center min-w-[100px]">
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">Applied</span>
+            <span class="text-base font-bold text-emerald-400">${appliedJobs}</span>
+          </div>
+        `;
+
+        subtabsContainer.innerHTML = `
+          <button onclick="setSubTab('all')" id="subtab-all" class="subtab-btn px-4 py-2 rounded-xl text-xs font-semibold ${activeSubTab === 'all' ? 'bg-teal-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'} transition">
+            📋 All Jobs (${totalJobs})
+          </button>
+          <button onclick="setSubTab('applied')" id="subtab-applied" class="subtab-btn px-4 py-2 rounded-xl text-xs font-semibold ${activeSubTab === 'applied' ? 'bg-teal-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'} transition flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-check text-emerald-400"></i>
+            <span>Applied Jobs (${appliedJobs})</span>
+          </button>
+        `;
+
+      } else {
+        // Freelance Configuration
+        bannerIcon.innerHTML = '<i class="fa-solid fa-laptop-code text-amber-400"></i>';
+        bannerTitle.innerText = '🚀 Freelance Projects & Bidding';
+        bannerDesc.innerText = 'Daftar proyek freelance Projects.co.id, Upwork, Discord beserta riwayat penawaran (Bids) & proyek yang dimenangkan (Won).';
+
+        const totalFreelance = allItems.filter(i => i.source_type === 'freelance').length;
+        const totalBids = allItems.filter(i => i.source_type === 'freelance' && (i.status === 'applied' || i.is_bid_success === 1)).length;
+        const totalWon = allItems.filter(i => i.source_type === 'freelance' && i.is_bid_success === 1).length;
+
+        sectionMetrics.innerHTML = `
+          <div class="bg-slate-950/80 border border-slate-800 px-4 py-2.5 rounded-xl text-center min-w-[100px]">
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">Total Freelance</span>
+            <span class="text-base font-bold text-amber-400">${totalFreelance}</span>
+          </div>
+          <div class="bg-slate-950/80 border border-slate-800 px-4 py-2.5 rounded-xl text-center min-w-[100px]">
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">Bids Placed</span>
+            <span class="text-base font-bold text-indigo-400">${totalBids}</span>
+          </div>
+          <div class="bg-slate-950/80 border border-slate-800 px-4 py-2.5 rounded-xl text-center min-w-[100px]">
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">Won / Success</span>
+            <span class="text-base font-bold text-emerald-400">${totalWon}</span>
+          </div>
+        `;
+
+        subtabsContainer.innerHTML = `
+          <button onclick="setSubTab('all')" id="subtab-all" class="subtab-btn px-4 py-2 rounded-xl text-xs font-semibold ${activeSubTab === 'all' ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'} transition">
+            📋 All Freelance (${totalFreelance})
+          </button>
+          <button onclick="setSubTab('bids')" id="subtab-bids" class="subtab-btn px-4 py-2 rounded-xl text-xs font-semibold ${activeSubTab === 'bids' ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'} transition flex items-center gap-1.5">
+            <i class="fa-solid fa-gavel text-indigo-400"></i>
+            <span>Active Bids (${totalBids})</span>
+          </button>
+          <button onclick="setSubTab('won')" id="subtab-won" class="subtab-btn px-4 py-2 rounded-xl text-xs font-semibold ${activeSubTab === 'won' ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'} transition flex items-center gap-1.5">
+            <i class="fa-solid fa-trophy text-emerald-400"></i>
+            <span>Won / Success (${totalWon})</span>
+          </button>
+        `;
+      }
+
+      applyFilters();
+    }
+
+    function setSubTab(subtab) {
+      activeSubTab = subtab;
+      const activeColorClass = currentMainSection === 'jobs' ? 'bg-teal-600' : 'bg-amber-600';
+      
+      document.querySelectorAll('.subtab-btn').forEach(btn => {
+        btn.classList.remove('bg-teal-600', 'bg-amber-600', 'text-white');
         btn.classList.add('bg-slate-800', 'text-slate-400');
       });
-      const activeEl = document.getElementById(`tab-${tab}`);
+      const activeEl = document.getElementById(`subtab-${subtab}`);
       if (activeEl) {
-        activeEl.classList.add('bg-teal-600', 'text-white');
+        activeEl.classList.add(activeColorClass, 'text-white');
         activeEl.classList.remove('bg-slate-800', 'text-slate-400');
       }
       applyFilters();
@@ -596,11 +678,16 @@
       currentFilterSource = document.getElementById('filter-source').value;
 
       const filtered = allItems.filter(item => {
-        // Tab Filter
-        if (activeTab === 'job' && item.source_type !== 'job') return false;
-        if (activeTab === 'freelance' && item.source_type !== 'freelance') return false;
-        if (activeTab === 'bids' && item.status !== 'applied' && item.is_bid_success !== 1) return false;
-        if (activeTab === 'applied' && item.status !== 'applied') return false;
+        // Main Section Filter (Jobs vs Freelance)
+        if (currentMainSection === 'jobs') {
+          if (item.source_type !== 'job') return false;
+          if (activeSubTab === 'applied' && item.status !== 'applied') return false;
+        } else {
+          // Freelance Section
+          if (item.source_type !== 'freelance') return false;
+          if (activeSubTab === 'bids' && (item.status !== 'applied' && item.is_bid_success !== 1)) return false;
+          if (activeSubTab === 'won' && item.is_bid_success !== 1) return false;
+        }
 
         // Platform Source Filter
         if (currentFilterSource !== 'all') {
@@ -629,8 +716,8 @@
             <div class="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600 mb-3">
               <i class="fa-solid fa-folder-open text-2xl"></i>
             </div>
-            <p class="text-base font-semibold text-slate-300">No opportunities found</p>
-            <p class="text-xs text-slate-500 mt-1">Try tweaking your search or filter options</p>
+            <p class="text-base font-semibold text-slate-300">No ${currentMainSection === 'jobs' ? 'jobs' : 'freelance projects'} found</p>
+            <p class="text-xs text-slate-500 mt-1">Try tweaking your search keywords or switching filters</p>
           </div>
         `;
         return;
@@ -643,14 +730,23 @@
           : 'bg-teal-500/10 text-teal-400 border-teal-500/20';
         
         let statusBadge = '';
-        if (item.is_bid_success === 1) {
-          statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">🏆 Won / Success</span>`;
-        } else if (item.status === 'applied') {
-          statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">⚡ Bid Placed</span>`;
-        } else if (item.status === 'skipped') {
-          statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700">Skipped (AI)</span>`;
-        } else if (item.status === 'failed') {
-          statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30">Failed</span>`;
+        if (isFreelance) {
+          if (item.is_bid_success === 1) {
+            statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">🏆 Won / Success</span>`;
+          } else if (item.status === 'applied') {
+            statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">⚡ Bid Placed</span>`;
+          } else if (item.status === 'skipped') {
+            statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700">Skipped (AI)</span>`;
+          } else if (item.status === 'failed') {
+            statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30">Bid Failed</span>`;
+          }
+        } else {
+          // Full-time Jobs Badging
+          if (item.status === 'applied') {
+            statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">✅ Applied</span>`;
+          } else if (item.status === 'failed') {
+            statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30">Apply Failed</span>`;
+          }
         }
 
         const skillsArr = (item.skills || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -660,9 +756,11 @@
 
         const cardBorderClass = item.is_bid_success === 1 
           ? 'border-emerald-500/50 bg-slate-900/90 shadow-emerald-500/10' 
-          : 'border-slate-800 hover:border-slate-700 bg-slate-900/60';
+          : (item.status === 'applied' ? 'border-teal-500/30 bg-slate-900/80' : 'border-slate-800 hover:border-slate-700 bg-slate-900/60');
 
         const platform = item.platform_source || 'Discord';
+        const actionBtnLabel = isFreelance ? 'Place Bid' : 'Apply Job';
+        const actionBtnIcon = isFreelance ? 'fa-gavel' : 'fa-paper-plane';
 
         return `
           <div class="group rounded-2xl border ${cardBorderClass} p-5 flex flex-col justify-between transition duration-200 hover:shadow-xl hover:shadow-black/40 relative">
@@ -685,13 +783,13 @@
                 </h4>
                 <p class="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
                   <i class="fa-regular fa-building text-[10px]"></i>
-                  <span>${item.company || 'Direct / Freelance Client'}</span>
+                  <span>${item.company || 'Direct / Client'}</span>
                 </p>
               </div>
 
               <div class="flex items-center justify-between text-xs py-2 px-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
-                <span class="text-slate-400 font-medium">Budget / Salary:</span>
-                <span class="font-bold text-teal-400">${item.budget_salary || 'Negotiable'}</span>
+                <span class="text-slate-400 font-medium">${isFreelance ? 'Budget Range:' : 'Salary / Comp:'}</span>
+                <span class="font-bold ${isFreelance ? 'text-amber-400' : 'text-teal-400'}">${item.budget_salary || 'Negotiable'}</span>
               </div>
 
               <p class="text-xs text-slate-400 line-clamp-3 leading-relaxed">
@@ -706,21 +804,25 @@
             <!-- Footer Actions -->
             <div class="mt-5 pt-4 border-t border-slate-800/80 flex items-center justify-between gap-2">
               <div class="flex items-center gap-2">
-                <button onclick="toggleBidSuccess('${item.id}', ${item.is_bid_success === 1 ? 0 : 1})" 
-                  title="${item.is_bid_success === 1 ? 'Mark as Not Won' : 'Mark as Won / Success'}"
-                  class="p-2 rounded-xl border ${item.is_bid_success === 1 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : 'bg-slate-800 hover:bg-slate-700 text-slate-400 border-slate-700'} text-xs font-semibold flex items-center gap-1 transition">
-                  <i class="fa-solid fa-trophy"></i>
-                  <span class="text-[10px] hidden sm:inline">${item.is_bid_success === 1 ? 'Won' : 'Mark Won'}</span>
-                </button>
+                ${isFreelance ? `
+                  <button onclick="toggleBidSuccess('${item.id}', ${item.is_bid_success === 1 ? 0 : 1})" 
+                    title="${item.is_bid_success === 1 ? 'Mark as Not Won' : 'Mark as Won / Success'}"
+                    class="p-2 rounded-xl border ${item.is_bid_success === 1 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : 'bg-slate-800 hover:bg-slate-700 text-slate-400 border-slate-700'} text-xs font-semibold flex items-center gap-1 transition">
+                    <i class="fa-solid fa-trophy"></i>
+                    <span class="text-[10px] hidden sm:inline">${item.is_bid_success === 1 ? 'Won' : 'Mark Won'}</span>
+                  </button>
+                ` : `
+                  <span class="text-[11px] text-slate-500 font-mono">${item.location || 'Remote'}</span>
+                `}
               </div>
 
               <div class="flex items-center gap-2">
                 <button onclick="openDetailModal('${item.id}')" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition">
-                  View Detail
+                  Details
                 </button>
-                <button onclick="quickApply('${item.id}')" class="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-teal-600/20">
-                  <i class="fa-solid fa-paper-plane text-[10px]"></i>
-                  <span>Apply</span>
+                <button onclick="quickApply('${item.id}')" class="px-3.5 py-2 rounded-xl ${isFreelance ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/20' : 'bg-teal-600 hover:bg-teal-500 shadow-teal-600/20'} text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md">
+                  <i class="fa-solid ${actionBtnIcon} text-[10px]"></i>
+                  <span>${actionBtnLabel}</span>
                 </button>
               </div>
             </div>
@@ -740,8 +842,8 @@
         if (data.success) {
           const itm = allItems.find(x => x.id === id);
           if (itm) itm.is_bid_success = data.is_bid_success;
-          updateMetrics();
-          applyFilters();
+          updateNavigationCounts();
+          updateSectionView();
         }
       } catch (err) {
         alert('Failed to update bid status: ' + err.message);
@@ -752,6 +854,8 @@
       const item = allItems.find(i => i.id === id);
       if (!item) return;
       currentSelectedItem = item;
+
+      const isFreelance = item.source_type === 'freelance';
 
       document.getElementById('modal-title').innerText = item.title;
       document.getElementById('modal-company').innerText = item.company || 'Direct / Freelance Client';
@@ -765,11 +869,21 @@
       const typeBadge = document.getElementById('modal-type-badge');
       typeBadge.innerText = item.source_type;
       typeBadge.className = `px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${
-        item.source_type === 'freelance' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-teal-500/10 text-teal-400 border border-teal-500/20'
+        isFreelance ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-teal-500/10 text-teal-400 border border-teal-500/20'
       }`;
 
       const statusBadge = document.getElementById('modal-status-badge');
-      statusBadge.innerText = (item.is_bid_success === 1 ? 'Won / Success' : item.status).toUpperCase();
+      if (isFreelance) {
+        statusBadge.innerText = (item.is_bid_success === 1 ? 'Won / Success' : (item.status === 'applied' ? 'Bid Placed' : item.status)).toUpperCase();
+      } else {
+        statusBadge.innerText = (item.status === 'applied' ? 'Applied' : item.status).toUpperCase();
+      }
+
+      document.getElementById('modal-ai-pitch-title').innerHTML = isFreelance 
+        ? '<i class="fa-solid fa-wand-magic-sparkles"></i> AI Freelance Proposal' 
+        : '<i class="fa-solid fa-wand-magic-sparkles"></i> AI Cover Letter & Pitch';
+
+      document.getElementById('modal-btn-apply-text').innerText = isFreelance ? 'Submit Bid Now' : 'Auto-Apply Job Now';
 
       const skillsCont = document.getElementById('modal-skills');
       skillsCont.innerHTML = (item.skills || '').split(',').map(s => s.trim()).filter(Boolean).map(s =>
@@ -832,8 +946,9 @@
       if (!currentSelectedItem) return;
       const btn = document.getElementById('modal-btn-apply');
       const coverLetter = document.getElementById('modal-cover-letter').value;
+      const isFreelance = currentSelectedItem.source_type === 'freelance';
 
-      btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Applying...';
+      btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Processing...';
       btn.disabled = true;
 
       try {
@@ -847,11 +962,11 @@
         });
         const data = await res.json();
         if (data.success) {
-          alert('Berhasil diapply! Cek riwayat bid di tab Bids.');
+          alert(isFreelance ? 'Berhasil mengajukan Bid ke proyek freelance!' : 'Berhasil apply ke lowongan kerja!');
           closeDetailModal();
           loadData();
         } else {
-          alert('Gagal apply: ' + data.error);
+          alert('Gagal: ' + data.error);
           if (data.log) {
             document.getElementById('modal-logs-section').classList.remove('hidden');
             document.getElementById('modal-logs').innerText = data.log;
@@ -860,7 +975,7 @@
       } catch (err) {
         alert('Apply execution error: ' + err.message);
       } finally {
-        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i><span>Auto-Apply Now</span>';
+        btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i><span>${isFreelance ? 'Submit Bid Now' : 'Auto-Apply Job Now'}</span>`;
         btn.disabled = false;
       }
     }
