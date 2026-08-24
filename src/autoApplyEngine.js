@@ -7,6 +7,27 @@ const { getSetting } = require('./db');
 const { generateCoverLetter, solveCaptchaWithVision, classifyProjectForAutoBid } = require('./aiService');
 
 /**
+ * Helper to extract maximum budget number from string or attribute
+ */
+function extractMaxBudget(budgetStr, maxAttrVal) {
+  if (maxAttrVal) {
+    const parsed = parseInt(maxAttrVal, 10);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+  if (!budgetStr) return 1000000;
+  
+  const parts = budgetStr.split(/[-–—]|sampai|to/i);
+  let highest = 0;
+  for (const part of parts) {
+    const cleanNum = parseInt(part.replace(/[^0-9]/g, ''), 10);
+    if (!isNaN(cleanNum) && cleanNum > highest) {
+      highest = cleanNum;
+    }
+  }
+  return highest > 0 ? highest : 1000000;
+}
+
+/**
  * Handle automated bidding specifically for Projects.co.id
  */
 async function applyProjectsCoId(page, item, profile, coverLetter, log) {
@@ -51,29 +72,27 @@ async function applyProjectsCoId(page, item, profile, coverLetter, log) {
     throw new Error('Could not find bid form on Projects.co.id');
   }
 
-  // 3. Fill Bid Amount
+  // 3. Fill Bid Amount (Set to Maximum Publish Budget)
   const amountInput = await page.$('#bid__amount');
   let finalBidAmount = '1000000';
   if (amountInput) {
-    let bidAmount = 0;
-    const minVal = await amountInput.getAttribute('min');
     const maxVal = await amountInput.getAttribute('max');
+    const minVal = await amountInput.getAttribute('min');
     
-    if (minVal && maxVal) {
-      const minNum = parseInt(minVal, 10) || 0;
-      const maxNum = parseInt(maxVal, 10) || minNum;
-      bidAmount = minNum > 0 ? Math.round((minNum + maxNum) / 2) : maxNum;
-    } else if (item.budget_salary) {
-      const nums = item.budget_salary.replace(/[^0-9]/g, '');
-      bidAmount = parseInt(nums, 10) || 1000000;
-    } else {
-      bidAmount = 1000000;
+    let bidAmount = extractMaxBudget(item.budget_salary, maxVal);
+    
+    // Safety check: ensure within input bounds if present
+    if (maxVal && parseInt(maxVal, 10) > 0) {
+      bidAmount = Math.min(bidAmount, parseInt(maxVal, 10));
+    }
+    if (minVal && parseInt(minVal, 10) > 0) {
+      bidAmount = Math.max(bidAmount, parseInt(minVal, 10));
     }
 
     finalBidAmount = String(bidAmount);
     await amountInput.click({ clickCount: 3 });
     await amountInput.fill(String(bidAmount));
-    log(`[Projects.co.id] Set bid amount: Rp ${bidAmount.toLocaleString('id-ID')}`);
+    log(`[Projects.co.id] Set bid amount to MAX published budget: Rp ${bidAmount.toLocaleString('id-ID')}`);
   }
 
   // 4. Fill Proposal Message via Summernote API

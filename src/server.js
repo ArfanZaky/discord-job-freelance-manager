@@ -148,7 +148,9 @@ app.post('/api/settings', (req, res) => {
       projectscoid_pass,
       autobid_enabled,
       autobid_custom_prompt,
-      autobid_bid_prompt
+      autobid_bid_prompt,
+      sync_interval_discord,
+      sync_interval_notif
     } = req.body;
     
     if (ai_host !== undefined) setSetting('ai_host', ai_host.trim());
@@ -167,6 +169,9 @@ app.post('/api/settings', (req, res) => {
     if (autobid_enabled !== undefined) setSetting('autobid_enabled', autobid_enabled ? '1' : '0');
     if (autobid_custom_prompt !== undefined) setSetting('autobid_custom_prompt', autobid_custom_prompt.trim());
     if (autobid_bid_prompt !== undefined) setSetting('autobid_bid_prompt', autobid_bid_prompt.trim());
+    if (sync_interval_discord !== undefined) setSetting('sync_interval_discord', String(Math.max(1, parseInt(sync_interval_discord) || 5)));
+    if (sync_interval_notif !== undefined) setSetting('sync_interval_notif', String(Math.max(1, parseInt(sync_interval_notif) || 15)));
+    restartCronTasks();
 
     res.json({ success: true, message: 'Settings saved successfully' });
   } catch (err) {
@@ -280,33 +285,48 @@ app.post('/api/notifications/sync', async (req, res) => {
   }
 });
 
-// Setup automated Cron schedule (Every 5 minutes by default)
-const cronInterval = process.env.CRON_INTERVAL_MINUTES || 5;
-cron.schedule(`*/${cronInterval} * * * *`, async () => {
-  console.log(`[Cron Runner] Checking Discord channels for new jobs & freelance listings...`);
-  try {
-    await syncAllChannels();
-    
-    // Check if auto-bid is enabled and execute
-    const autobidEnabled = getAllSettings().autobid_enabled === '1';
-    if (autobidEnabled) {
-      console.log('[Cron Runner] Auto-Bid active. Running AI Auto-Bid pipeline...');
-      await runAutoBidRoutine(3);
-    }
-  } catch (err) {
-    console.error('[Cron Runner] Error during cron cycle:', err.message);
-  }
-});
+// Dynamic Automated Cron Scheduler
+let discordCronTask = null;
+let notifCronTask = null;
 
-// Periodic notifications sync every 30 minutes
-cron.schedule('*/30 * * * *', async () => {
-  try {
-    console.log('[Cron Runner] Periodically syncing Projects.co.id notifications...');
-    await scrapeProjectsCoIdAccount();
-  } catch (e) {
-    console.error('[Cron Runner] Failed periodic notification sync:', e.message);
-  }
-});
+function restartCronTasks() {
+  const settings = getAllSettings();
+  const discordInterval = Math.max(1, parseInt(settings.sync_interval_discord) || 5);
+  const notifInterval = Math.max(1, parseInt(settings.sync_interval_notif) || 15);
+
+  if (discordCronTask) discordCronTask.stop();
+  if (notifCronTask) notifCronTask.stop();
+
+  console.log(`[Cron Scheduler] Initializing Tasks: Discord Sync + Auto-Bid every ${discordInterval}m, Notification Sync every ${notifInterval}m`);
+
+  // 1. Discord Ingestion & Auto-Bid Cron
+  discordCronTask = cron.schedule(`*/${discordInterval} * * * *`, async () => {
+    console.log(`[Cron Scheduler] Running scheduled Discord sync (Interval: ${discordInterval}m)...`);
+    try {
+      await syncAllChannels();
+      const current = getAllSettings();
+      if (current.autobid_enabled === '1') {
+        console.log('[Cron Scheduler] Auto-Bid active. Evaluating Projects.co.id listings...');
+        await runAutoBidRoutine(3);
+      }
+    } catch (err) {
+      console.error('[Cron Scheduler] Discord/Auto-Bid Error:', err.message);
+    }
+  });
+
+  // 2. Projects.co.id Notifications Auto-Sync Cron
+  notifCronTask = cron.schedule(`*/${notifInterval} * * * *`, async () => {
+    console.log(`[Cron Scheduler] Running scheduled Projects.co.id notification sync (Interval: ${notifInterval}m)...`);
+    try {
+      await scrapeProjectsCoIdAccount();
+    } catch (err) {
+      console.error('[Cron Scheduler] Notification Sync Error:', err.message);
+    }
+  });
+}
+
+// Initial cron start
+restartCronTasks();
 
 // Start Server
 app.listen(PORT, '0.0.0.0', async () => {

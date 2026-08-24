@@ -93,7 +93,9 @@ db.exec(`
     ('projectscoid_pass', '456321987Azaky'),
     ('autobid_enabled', '0'),
     ('autobid_custom_prompt', 'Hanya terima proyek yang berkaitan dengan perbaikan bug website (PHP, Laravel, WordPress, Next.js, React, Python, Vue, HTML/CSS/JS, API) atau pengembangan sistem website (Web application, backend, frontend, portal, SaaS web). Tolak proyek mobile app murni, video, desain grafis, adsense, voice over, penulisan artikel, sosmed.'),
-    ('autobid_bid_prompt', 'Buat proposal penawaran yang to the point, profesional, dan meyakinkan. Jelaskan pemahaman teknis singkat mengenai masalah atau sistem yang akan dibangun, sebutkan stack teknologi relevan yang dikuasai, tawarkan estimasi waktu realistis, serta jaminan pengerjaan rapi dan siap revisi.');
+    ('autobid_bid_prompt', 'Buat proposal penawaran yang to the point, profesional, dan meyakinkan. Jelaskan pemahaman teknis singkat mengenai masalah atau sistem yang akan dibangun, sebutkan stack teknologi relevan yang dikuasai, tawarkan estimasi waktu realistis, serta jaminan pengerjaan rapi dan siap revisi.'),
+    ('sync_interval_discord', '5'),
+    ('sync_interval_notif', '15');
 `);
 
 // Helpers for settings key-value
@@ -114,7 +116,9 @@ function getAllSettings() {
     projectscoid_pass: '456321987Azaky',
     autobid_enabled: '0',
     autobid_custom_prompt: 'Hanya terima proyek yang berkaitan dengan perbaikan bug website (PHP, Laravel, WordPress, Next.js, React, Python, Vue, HTML/CSS/JS, API) atau pengembangan sistem website (Web application, backend, frontend, portal, SaaS web). Tolak proyek mobile app murni, video, desain grafis, adsense, voice over, penulisan artikel, sosmed.',
-    autobid_bid_prompt: 'Buat proposal penawaran yang to the point, profesional, dan meyakinkan. Jelaskan pemahaman teknis singkat mengenai masalah atau sistem yang akan dibangun, sebutkan stack teknologi relevan yang dikuasai, tawarkan estimasi waktu realistis, serta jaminan pengerjaan rapi dan siap revisi.'
+    autobid_bid_prompt: 'Buat proposal penawaran yang to the point, profesional, dan meyakinkan. Jelaskan pemahaman teknis singkat mengenai masalah atau sistem yang akan dibangun, sebutkan stack teknologi relevan yang dikuasai, tawarkan estimasi waktu realistis, serta jaminan pengerjaan rapi dan siap revisi.',
+    sync_interval_discord: '5',
+    sync_interval_notif: '15'
   };
   rows.forEach(r => {
     res[r.key] = r.value;
