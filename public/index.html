@@ -157,13 +157,7 @@
       <div class="flex items-center gap-2">
         <label for="filter-source" class="text-xs text-slate-400 font-medium shrink-0">Source:</label>
         <select id="filter-source" onchange="applyFilters()" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-teal-500 transition">
-          <option value="all">🌐 All Sources</option>
-          <option value="Projects.co.id">Projects.co.id</option>
-          <option value="JobStreet">JobStreet</option>
-          <option value="Glints">Glints</option>
-          <option value="Kalibrr">Kalibrr</option>
-          <option value="Dealls">Dealls</option>
-          <option value="Discord">Discord Direct</option>
+          <!-- Populated dynamically per main section -->
         </select>
       </div>
     </div>
@@ -229,19 +223,14 @@
               <span>Projects.co.id</span>
               <span class="px-1.5 py-0.2 text-[10px] bg-amber-800 text-amber-200 rounded-full font-bold" id="notif-badge-projects">0</span>
             </button>
-            <button onclick="alert('Upwork Notification Sync - Coming Soon!')" class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition flex items-center gap-1.5 cursor-not-allowed opacity-60" title="Coming Soon">
-              <i class="fa-brands fa-upwork text-emerald-400"></i>
-              <span>Upwork</span>
-              <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Soon</span>
-            </button>
             <button onclick="alert('Freelancer.com Notification Sync - Coming Soon!')" class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition flex items-center gap-1.5 cursor-not-allowed opacity-60" title="Coming Soon">
               <i class="fa-solid fa-bolt text-sky-400"></i>
-              <span>Freelancer</span>
+              <span>Freelancer.com</span>
               <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Soon</span>
             </button>
-            <button onclick="alert('Fiverr Notification Sync - Coming Soon!')" class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition flex items-center gap-1.5 cursor-not-allowed opacity-60" title="Coming Soon">
-              <i class="fa-solid fa-circle-check text-green-400"></i>
-              <span>Fiverr</span>
+            <button onclick="alert('Sribu.com Notification Sync - Coming Soon!')" class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition flex items-center gap-1.5 cursor-not-allowed opacity-60" title="Coming Soon">
+              <i class="fa-solid fa-circle-nodes text-emerald-400"></i>
+              <span>Sribu.com</span>
               <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Soon</span>
             </button>
           </div>
@@ -636,6 +625,30 @@
       document.getElementById('nav-count-freelance').innerText = freelanceCount;
     }
 
+    function updateSourceDropdown() {
+      const select = document.getElementById('filter-source');
+      if (currentMainSection === 'jobs') {
+        select.innerHTML = `
+          <option value="all">🌐 All Sources</option>
+          <option value="JobStreet">JobStreet</option>
+          <option value="Glints">Glints</option>
+          <option value="Kalibrr">Kalibrr</option>
+          <option value="Dealls">Dealls</option>
+          <option value="Discord">Discord Direct</option>
+        `;
+      } else {
+        // Freelance & Bids: Khusus Projects.co.id, Freelancer.com, Sribu.com
+        select.innerHTML = `
+          <option value="all">🌐 All Freelance Sources</option>
+          <option value="Projects.co.id">Projects.co.id</option>
+          <option value="Freelancer.com">Freelancer.com</option>
+          <option value="Sribu.com">Sribu.com</option>
+        `;
+      }
+      select.value = 'all';
+      currentFilterSource = 'all';
+    }
+
     function setMainSection(section) {
       currentMainSection = section;
       activeSubTab = 'all'; // reset to 'all' when switching main section
@@ -651,6 +664,7 @@
         btnJobs.className = 'px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-900';
       }
 
+      updateSourceDropdown();
       updateSectionView();
     }
 
@@ -700,7 +714,7 @@
         // Freelance Configuration
         bannerIcon.innerHTML = '<i class="fa-solid fa-laptop-code text-amber-400"></i>';
         bannerTitle.innerText = '🚀 Freelance Projects & Bidding';
-        bannerDesc.innerText = 'Daftar proyek freelance Projects.co.id, Upwork, Discord beserta riwayat penawaran (Bids) & notifikasi akun.';
+        bannerDesc.innerText = 'Daftar proyek freelance Projects.co.id, Freelancer.com, Sribu.com beserta riwayat penawaran (Bids) & notifikasi akun.';
 
         const totalFreelance = allItems.filter(i => i.source_type === 'freelance').length;
         const totalBids = allItems.filter(i => i.source_type === 'freelance' && (i.status === 'applied' || i.is_bid_success === 1)).length;
@@ -848,7 +862,7 @@
           statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">🆕 New</span>';
         }
 
-        const platformBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-300 border border-slate-700">${item.platform_source || 'Discord'}</span>`;
+        const platformBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-300 border border-slate-700">${item.platform_source || (isFreelance ? 'Projects.co.id' : 'Discord')}</span>`;
 
         let actionBtnLabel = isFreelance ? 'Place Bid' : 'Auto-Apply';
         let actionBtnIcon = isFreelance ? 'fa-gavel' : 'fa-paper-plane';
@@ -1043,7 +1057,7 @@
       document.getElementById('modal-category').innerText = item.category || '-';
       document.getElementById('modal-desc').innerText = item.description || 'No description provided';
       document.getElementById('modal-cover-letter').value = item.ai_cover_letter || '';
-      document.getElementById('modal-platform-badge').innerText = item.platform_source || 'Discord';
+      document.getElementById('modal-platform-badge').innerText = item.platform_source || (isFreelance ? 'Projects.co.id' : 'Discord');
 
       const typeBadge = document.getElementById('modal-type-badge');
       typeBadge.innerText = item.source_type;
@@ -1343,6 +1357,7 @@
 
     // Initial Load
     document.addEventListener('DOMContentLoaded', () => {
+      updateSourceDropdown();
       loadData();
       loadNotificationsData();
       loadAutoBidBadge();
