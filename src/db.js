@@ -33,6 +33,8 @@ db.exec(`
     ai_summary TEXT,
     ai_cover_letter TEXT,
     apply_log TEXT,
+    is_bid_success INTEGER DEFAULT 0,
+    bid_amount TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
@@ -71,6 +73,20 @@ db.exec(`
     ('ai_model_text', 'gpt-4o-mini'),
     ('ai_model_vision', 'gpt-4o-mini');
 `);
+
+// Check if migration needed for existing table
+try {
+  const tableInfo = db.prepare(`PRAGMA table_info(items)`).all();
+  const columnNames = tableInfo.map(c => c.name);
+  if (!columnNames.includes('is_bid_success')) {
+    db.prepare(`ALTER TABLE items ADD COLUMN is_bid_success INTEGER DEFAULT 0`).run();
+  }
+  if (!columnNames.includes('bid_amount')) {
+    db.prepare(`ALTER TABLE items ADD COLUMN bid_amount TEXT`).run();
+  }
+} catch (e) {
+  console.error('Migration error:', e.message);
+}
 
 // Helpers for settings key-value
 function getSetting(key, fallback = '') {

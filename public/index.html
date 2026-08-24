@@ -29,6 +29,14 @@
     .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    /* Toggle switch styles */
+    .toggle-checkbox:checked {
+      right: 0;
+      border-color: #10b981;
+    }
+    .toggle-checkbox:checked + .toggle-label {
+      background-color: #10b981;
+    }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
@@ -66,7 +74,7 @@
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
 
     <!-- Metrics Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
       <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
         <div>
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Listings</p>
@@ -89,7 +97,7 @@
 
       <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
         <div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Freelance Projects</p>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Freelance</p>
           <h3 id="stat-freelance" class="text-2xl font-bold mt-1 text-amber-400">0</h3>
         </div>
         <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
@@ -99,11 +107,21 @@
 
       <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
         <div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Applied / Success</p>
-          <h3 id="stat-applied" class="text-2xl font-bold mt-1 text-emerald-400">0</h3>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Bids</p>
+          <h3 id="stat-bids" class="text-2xl font-bold mt-1 text-indigo-400">0</h3>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+          <i class="fa-solid fa-gavel text-xl"></i>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Won / Success</p>
+          <h3 id="stat-won" class="text-2xl font-bold mt-1 text-emerald-400">0</h3>
         </div>
         <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-          <i class="fa-solid fa-paper-plane text-xl"></i>
+          <i class="fa-solid fa-trophy text-xl"></i>
         </div>
       </div>
     </div>
@@ -111,10 +129,14 @@
     <!-- Filter Bar & Search -->
     <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row gap-4 items-center justify-between">
       <div class="flex items-center gap-2 flex-wrap w-full md:w-auto">
-        <button onclick="setFilterType('all')" id="tab-all" class="px-4 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white transition">All</button>
-        <button onclick="setFilterType('job')" id="tab-job" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Jobs</button>
-        <button onclick="setFilterType('freelance')" id="tab-freelance" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Freelance</button>
-        <button onclick="setFilterStatus('applied')" id="tab-applied" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Applied</button>
+        <button onclick="setTab('all')" id="tab-all" class="px-4 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white transition">All</button>
+        <button onclick="setTab('job')" id="tab-job" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Jobs</button>
+        <button onclick="setTab('freelance')" id="tab-freelance" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Freelance</button>
+        <button onclick="setTab('bids')" id="tab-bids" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-gavel text-xs text-indigo-400"></i>
+          <span>Bids</span>
+        </button>
+        <button onclick="setTab('applied')" id="tab-applied" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Applied</button>
 
         <!-- Source Platform Filter Dropdown -->
         <div class="relative inline-block ml-1">
@@ -139,7 +161,7 @@
 
     <!-- Listings Container -->
     <div id="listing-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-      <!-- Dynamic Job Cards will be inserted here -->
+      <!-- Dynamic Cards will be inserted here -->
     </div>
 
     <!-- Empty State -->
@@ -370,8 +392,7 @@
 
   <script>
     let allItems = [];
-    let currentFilterType = 'all';
-    let currentFilterStatus = 'all';
+    let activeTab = 'all'; // 'all', 'job', 'freelance', 'bids', 'applied'
     let currentFilterSource = 'all';
     let activeItem = null;
 
@@ -407,50 +428,60 @@
     }
 
     function updateStats() {
-      document.getElementById('stat-total').innerText = allItems.length;
-      document.getElementById('stat-jobs').innerText = allItems.filter(i => i.source_type === 'job').length;
-      document.getElementById('stat-freelance').innerText = allItems.filter(i => i.source_type === 'freelance').length;
-      document.getElementById('stat-applied').innerText = allItems.filter(i => i.status === 'applied').length;
+      const total = allItems.length;
+      const jobs = allItems.filter(i => i.source_type === 'job').length;
+      const freelance = allItems.filter(i => i.source_type === 'freelance').length;
+      const bids = allItems.filter(i => i.source_type === 'freelance' && (i.status === 'applied' || i.is_bid_success === 1)).length;
+      const won = allItems.filter(i => i.is_bid_success === 1).length;
+
+      document.getElementById('stat-total').innerText = total;
+      document.getElementById('stat-jobs').innerText = jobs;
+      document.getElementById('stat-freelance').innerText = freelance;
+      document.getElementById('stat-bids').innerText = bids;
+      document.getElementById('stat-won').innerText = won;
     }
 
-    function setFilterType(type) {
-      currentFilterType = type;
-      currentFilterStatus = 'all';
-      updateTabStyles();
-      renderListings();
-    }
-
-    function setFilterStatus(status) {
-      currentFilterStatus = status;
-      currentFilterType = 'all';
+    function setTab(tab) {
+      activeTab = tab;
       updateTabStyles();
       renderListings();
     }
 
     function updateTabStyles() {
-      ['all', 'job', 'freelance'].forEach(t => {
+      ['all', 'job', 'freelance', 'bids', 'applied'].forEach(t => {
         const el = document.getElementById(`tab-${t}`);
         if (el) {
-          if (currentFilterType === t && currentFilterStatus === 'all') {
-            el.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white transition';
+          if (activeTab === t) {
+            el.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white transition flex items-center gap-1.5 shadow-sm';
           } else {
-            el.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition';
+            el.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1.5';
           }
         }
       });
-
-      const appEl = document.getElementById('tab-applied');
-      if (appEl) {
-        if (currentFilterStatus === 'applied') {
-          appEl.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white transition';
-        } else {
-          appEl.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition';
-        }
-      }
     }
 
     function handleSearch() {
       renderListings();
+    }
+
+    async function toggleBidSuccess(itemId, currentVal) {
+      const newVal = !currentVal;
+      try {
+        const res = await fetch(`/api/items/${itemId}/bid-success`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_bid_success: newVal })
+        });
+        const data = await res.json();
+        if (data.success) {
+          const item = allItems.find(i => i.id === itemId);
+          if (item) item.is_bid_success = newVal ? 1 : 0;
+          updateStats();
+          renderListings();
+        }
+      } catch (err) {
+        alert('Failed to update bid status: ' + err.message);
+      }
     }
 
     function renderListings() {
@@ -459,9 +490,20 @@
       const emptyState = document.getElementById('empty-state');
 
       let filtered = allItems.filter(item => {
-        if (currentFilterType !== 'all' && item.source_type !== currentFilterType) return false;
-        if (currentFilterStatus !== 'all' && item.status !== currentFilterStatus) return false;
+        // Tab filtering
+        if (activeTab === 'job' && item.source_type !== 'job') return false;
+        if (activeTab === 'freelance' && item.source_type !== 'freelance') return false;
+        if (activeTab === 'bids') {
+          // Bids are freelance items that have been applied or won
+          const isBid = item.source_type === 'freelance' && (item.status === 'applied' || item.is_bid_success === 1);
+          if (!isBid) return false;
+        }
+        if (activeTab === 'applied' && item.status !== 'applied') return false;
+
+        // Platform filter
         if (currentFilterSource !== 'all' && item.platform_source !== currentFilterSource) return false;
+
+        // Search keyword
         if (q) {
           const matchTitle = item.title?.toLowerCase().includes(q);
           const matchCompany = item.company?.toLowerCase().includes(q);
@@ -483,10 +525,13 @@
       container.innerHTML = filtered.map(item => {
         const isJob = item.source_type === 'job';
         const typeBadgeClass = isJob ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-        
+        const isWon = item.is_bid_success === 1;
+
         let statusBadge = '';
-        if (item.status === 'applied') {
-          statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1"><i class="fa-solid fa-check"></i> Applied</span>`;
+        if (isWon) {
+          statusBadge = `<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1"><i class="fa-solid fa-trophy text-amber-400"></i> Bid Won / Success</span>`;
+        } else if (item.status === 'applied') {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 flex items-center gap-1"><i class="fa-solid fa-check"></i> ${item.source_type === 'freelance' ? 'Bid Placed' : 'Applied'}</span>`;
         } else if (item.status === 'applying') {
           statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse"><i class="fa-solid fa-spinner fa-spin"></i> In Progress</span>`;
         } else if (item.status === 'failed') {
@@ -494,12 +539,14 @@
         }
 
         const sourceLabel = item.platform_source || (isJob ? 'Job Board' : 'Projects.co.id');
+        const showBidToggle = item.source_type === 'freelance' || activeTab === 'bids';
 
         return `
-          <div class="bg-slate-900 border border-slate-800 hover:border-slate-700 transition rounded-2xl p-5 flex flex-col justify-between group shadow-sm hover:shadow-xl">
+          <div class="bg-slate-900 border ${isWon ? 'border-emerald-500/40 shadow-emerald-500/5' : 'border-slate-800 hover:border-slate-700'} transition rounded-2xl p-5 flex flex-col justify-between group shadow-sm hover:shadow-xl relative overflow-hidden">
+            ${isWon ? '<div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-emerald-500/20 to-transparent pointer-events-none"></div>' : ''}
             <div class="space-y-3">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-1.5">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-1.5 flex-wrap">
                   <span class="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${typeBadgeClass}">
                     ${item.source_type}
                   </span>
@@ -537,6 +584,21 @@
               <p class="text-xs text-slate-400 line-clamp-3 leading-relaxed">
                 ${item.description || 'No description available'}
               </p>
+
+              <!-- Success Bid Toggle Section (for Freelance / Bids) -->
+              ${showBidToggle ? `
+                <div class="pt-2 border-t border-slate-800/60 flex items-center justify-between">
+                  <div class="flex items-center gap-1.5 text-xs text-slate-400">
+                    <i class="fa-solid fa-trophy ${isWon ? 'text-emerald-400' : 'text-slate-600'}"></i>
+                    <span class="${isWon ? 'text-emerald-300 font-semibold' : ''}">Success Bid / Won</span>
+                  </div>
+                  <button onclick="toggleBidSuccess('${item.id}', ${isWon})" 
+                    class="px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${isWon ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 border border-slate-700'}">
+                    <i class="fa-solid ${isWon ? 'fa-circle-check' : 'fa-circle'}"></i>
+                    <span>${isWon ? 'Won' : 'Mark Won'}</span>
+                  </button>
+                </div>
+              ` : ''}
             </div>
 
             <div class="pt-4 mt-4 border-t border-slate-800 flex items-center justify-between gap-2">
@@ -545,7 +607,7 @@
               </a>
               <button onclick="openApplyModal('${item.id}')" class="flex-1 py-2 px-4 rounded-xl bg-teal-600/10 hover:bg-teal-600 text-teal-400 hover:text-white text-xs font-bold border border-teal-500/20 hover:border-teal-600 transition flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-bolt"></i>
-                <span>${item.status === 'applied' ? 'Re-Apply / Edit' : 'Apply with AI'}</span>
+                <span>${item.status === 'applied' ? (item.source_type === 'freelance' ? 'Re-Bid / Edit' : 'Re-Apply') : (item.source_type === 'freelance' ? 'Bid with AI' : 'Apply with AI')}</span>
               </button>
             </div>
           </div>

@@ -38,7 +38,23 @@ app.post('/api/sync', async (req, res) => {
   }
 });
 
-// 3. User Profile API
+// 3. Toggle Bid Success / Won
+app.post('/api/items/:id/bid-success', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_bid_success } = req.body;
+    const successVal = is_bid_success ? 1 : 0;
+    
+    db.prepare('UPDATE items SET is_bid_success = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .run(successVal, id);
+    
+    res.json({ success: true, is_bid_success: successVal });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 4. User Profile API
 app.get('/api/profile', (req, res) => {
   try {
     const profile = db.prepare('SELECT * FROM user_profile WHERE id = 1').get();
@@ -80,7 +96,7 @@ app.post('/api/profile', (req, res) => {
   }
 });
 
-// 4. Settings API (AI + Projects.co.id & Platforms)
+// 5. Settings API (AI + Projects.co.id & Platforms)
 app.get('/api/settings', (req, res) => {
   try {
     const settings = getAllSettings();
@@ -151,7 +167,7 @@ app.post('/api/settings/test', async (req, res) => {
   }
 });
 
-// 5. Generate AI Cover Letter / Proposal
+// 6. Generate AI Cover Letter / Proposal
 app.post('/api/generate-cover-letter', async (req, res) => {
   try {
     const { item_id } = req.body;
@@ -169,7 +185,7 @@ app.post('/api/generate-cover-letter', async (req, res) => {
   }
 });
 
-// 6. Execute Auto-Apply
+// 7. Execute Auto-Apply
 app.post('/api/apply', async (req, res) => {
   try {
     const { item_id, cover_letter } = req.body;
