@@ -6,10 +6,11 @@ const cors = require('cors');
 const cron = require('node-cron');
 
 const db = require('./db');
-const { getAllSettings, setSetting } = require('./db');
+const { getAllSettings, setSetting, getSetting } = require('./db');
 const { syncAllChannels } = require('./discordScraper');
 const { generateCoverLetter, analyzeJobMatch, testAIConnection, fetchAvailableModels } = require('./aiService');
 const { applyToJob, runAutoBidRoutine } = require('./autoApplyEngine');
+const { scrapeProjectsCoIdAccount } = require('./projectscoidScraper');
 
 const app = express();
 const PORT = process.env.APP_PORT || 5220;
@@ -17,6 +18,23 @@ const PORT = process.env.APP_PORT || 5220;
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
+
+// Ensure notifications table exists
+db.exec(`
+  CREATE TABLE IF NOT EXISTS projectscoid_notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    raw_id TEXT UNIQUE,
+    avatar TEXT,
+    sender TEXT,
+    notif_datetime TEXT,
+    content_text TEXT,
+    content_html TEXT,
+    notif_type TEXT,
+    links_json TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`);
 
 // 1. Get all jobs / freelance items
 app.get('/api/items', (req, res) => {
@@ -226,6 +244,42 @@ app.post('/api/apply', async (req, res) => {
   }
 });
 
+// 8. Projects.co.id Notifications API
+app.get('/api/notifications', (req, res) => {
+  try {
+    const stats = {
+      pesta_points: getSetting('projectscoid_pesta_points', '0'),
+      worker_points: getSetting('projectscoid_worker_points', '0'),
+      affiliate_points: getSetting('projectscoid_affiliate_points', '0'),
+      balance: getSetting('projectscoid_balance', 'Rp 0'),
+      last_synced: getSetting('projectscoid_last_synced', null)
+    };
+
+    const notifications = db.prepare(`
+      SELECT * FROM projectscoid_notifications 
+      ORDER BY id ASC
+    `).all();
+
+    res.json({
+      success: true,
+      stats,
+      count: notifications.length,
+      notifications
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/notifications/sync', async (req, res) => {
+  try {
+    const result = await scrapeProjectsCoIdAccount();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Setup automated Cron schedule (Every 5 minutes by default)
 const cronInterval = process.env.CRON_INTERVAL_MINUTES || 5;
 cron.schedule(`*/${cronInterval} * * * *`, async () => {
@@ -241,6 +295,16 @@ cron.schedule(`*/${cronInterval} * * * *`, async () => {
     }
   } catch (err) {
     console.error('[Cron Runner] Error during cron cycle:', err.message);
+  }
+});
+
+// Periodic notifications sync every 30 minutes
+cron.schedule('*/30 * * * *', async () => {
+  try {
+    console.log('[Cron Runner] Periodically syncing Projects.co.id notifications...');
+    await scrapeProjectsCoIdAccount();
+  } catch (e) {
+    console.error('[Cron Runner] Failed periodic notification sync:', e.message);
   }
 });
 

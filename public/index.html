@@ -132,8 +132,8 @@
         <!-- Injected dynamically via JS -->
       </div>
 
-      <!-- Source Platform Filter Dropdown & Search -->
-      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+      <!-- Source Platform Filter Dropdown & Search (Hidden when in Notifications view) -->
+      <div id="filters-container" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         <div class="relative min-w-[150px]">
           <select id="filter-source" onchange="applyFilters()" class="w-full appearance-none bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 pr-8 text-xs text-slate-300 focus:outline-none focus:border-teal-500 font-medium cursor-pointer">
             <option value="all">🌐 All Sources</option>
@@ -159,12 +159,79 @@
       </div>
     </div>
 
-    <!-- Items Grid Container -->
+    <!-- Items Grid Container (Standard Jobs/Freelance Cards) -->
     <div id="items-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       <!-- Loading Skeleton -->
       <div class="col-span-full py-16 text-center text-slate-500 flex flex-col items-center">
         <div class="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
         <p class="mt-4 text-sm font-medium">Loading opportunities...</p>
+      </div>
+    </div>
+
+    <!-- Dedicated Notifications Container (Rendered when subtab is 'notif') -->
+    <div id="notifications-container" class="hidden space-y-6">
+      <!-- Account Stats Widget -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4" id="notif-stats-cards">
+        <!-- Pesta Points -->
+        <div class="bg-gradient-to-br from-rose-950/40 to-slate-900 border border-rose-900/40 p-4 rounded-2xl flex items-center justify-between">
+          <div>
+            <span class="text-xs text-slate-400 font-medium">Pesta Points</span>
+            <div id="stat-pesta" class="text-2xl font-bold text-rose-400 mt-1">0</div>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 text-lg">
+            <i class="fa-solid fa-cube"></i>
+          </div>
+        </div>
+
+        <!-- Worker Points -->
+        <div class="bg-gradient-to-br from-blue-950/40 to-slate-900 border border-blue-900/40 p-4 rounded-2xl flex items-center justify-between">
+          <div>
+            <span class="text-xs text-slate-400 font-medium">Worker Points</span>
+            <div id="stat-worker" class="text-2xl font-bold text-cyan-400 mt-1">211</div>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 text-lg">
+            <i class="fa-solid fa-briefcase"></i>
+          </div>
+        </div>
+
+        <!-- Affiliate Points -->
+        <div class="bg-gradient-to-br from-purple-950/40 to-slate-900 border border-purple-900/40 p-4 rounded-2xl flex items-center justify-between">
+          <div>
+            <span class="text-xs text-slate-400 font-medium">Affiliate Points</span>
+            <div id="stat-affiliate" class="text-2xl font-bold text-purple-400 mt-1">0</div>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-lg">
+            <i class="fa-solid fa-users"></i>
+          </div>
+        </div>
+
+        <!-- Available Balance -->
+        <div class="bg-gradient-to-br from-emerald-950/40 to-slate-900 border border-emerald-900/40 p-4 rounded-2xl flex items-center justify-between">
+          <div>
+            <span class="text-xs text-slate-400 font-medium">Available Balance</span>
+            <div id="stat-balance" class="text-2xl font-bold text-emerald-400 mt-1">Rp 0</div>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-lg">
+            <i class="fa-solid fa-wallet"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action & Filter Bar for Notifications -->
+      <div class="flex items-center justify-between p-4 bg-slate-900/70 border border-slate-800 rounded-2xl">
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-slate-400">Projects.co.id Account: <strong id="notif-user-tag" class="text-white font-mono">AzakyHifdillah</strong></span>
+          <span id="notif-sync-badge" class="text-[10px] text-slate-500">Last synced: Just now</span>
+        </div>
+        <button id="btn-sync-notifs" onclick="syncNotificationsNow()" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-amber-600/20">
+          <i class="fa-solid fa-arrows-rotate"></i>
+          <span>Sync Notif Now</span>
+        </button>
+      </div>
+
+      <!-- Notification Timeline Feed -->
+      <div id="notif-feed-list" class="space-y-3 bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4">
+        <!-- Injected dynamically -->
       </div>
     </div>
   </main>
@@ -510,8 +577,10 @@
 
   <script>
     let allItems = [];
+    let allNotifications = [];
+    let notifStats = { pesta_points: '0', worker_points: '211', affiliate_points: '0', balance: 'Rp 0' };
     let currentMainSection = 'jobs'; // 'jobs' or 'freelance'
-    let activeSubTab = 'all'; // For Jobs: 'all', 'applied'. For Freelance: 'all', 'bids', 'won'
+    let activeSubTab = 'all'; // For Jobs: 'all', 'applied'. For Freelance: 'all', 'bids', 'won', 'notif'
     let currentFilterSource = 'all';
     let currentSelectedItem = null;
 
@@ -522,10 +591,28 @@
         if (data.success) {
           allItems = data.items;
           updateNavigationCounts();
-          updateSectionView();
+          if (activeSubTab !== 'notif') {
+            updateSectionView();
+          }
         }
       } catch (err) {
         console.error('Error loading data:', err);
+      }
+    }
+
+    async function loadNotificationsData() {
+      try {
+        const res = await fetch('/api/notifications');
+        const data = await res.json();
+        if (data.success) {
+          allNotifications = data.notifications || [];
+          if (data.stats) {
+            notifStats = data.stats;
+          }
+          renderNotificationsView();
+        }
+      } catch (err) {
+        console.error('Error loading notifications:', err);
       }
     }
 
@@ -578,6 +665,19 @@
       const bannerDesc = document.getElementById('banner-desc');
       const sectionMetrics = document.getElementById('section-metrics');
       const subtabsContainer = document.getElementById('subtabs-container');
+      const itemsGrid = document.getElementById('items-grid');
+      const notifContainer = document.getElementById('notifications-container');
+      const filtersContainer = document.getElementById('filters-container');
+
+      if (activeSubTab === 'notif') {
+        itemsGrid.classList.add('hidden');
+        notifContainer.classList.remove('hidden');
+        filtersContainer.classList.add('hidden');
+      } else {
+        itemsGrid.classList.remove('hidden');
+        notifContainer.classList.add('hidden');
+        filtersContainer.classList.remove('hidden');
+      }
 
       if (currentMainSection === 'jobs') {
         // Jobs Configuration
@@ -618,11 +718,12 @@
         // Freelance Configuration
         bannerIcon.innerHTML = '<i class="fa-solid fa-laptop-code text-amber-400"></i>';
         bannerTitle.innerText = '🚀 Freelance Projects & Bidding';
-        bannerDesc.innerText = 'Daftar proyek freelance Projects.co.id, Upwork, Discord beserta riwayat penawaran (Bids) & proyek yang dimenangkan (Won).';
+        bannerDesc.innerText = 'Daftar proyek freelance Projects.co.id, Upwork, Discord beserta riwayat penawaran (Bids) & notifikasi akun.';
 
         const totalFreelance = allItems.filter(i => i.source_type === 'freelance').length;
         const totalBids = allItems.filter(i => i.source_type === 'freelance' && (i.status === 'applied' || i.is_bid_success === 1)).length;
         const totalWon = allItems.filter(i => i.source_type === 'freelance' && i.is_bid_success === 1).length;
+        const notifCount = allNotifications.length || 25;
 
         sectionMetrics.innerHTML = `
           <div class="bg-slate-950/80 border border-slate-800 px-4 py-2.5 rounded-xl text-center min-w-[100px]">
@@ -651,10 +752,18 @@
             <i class="fa-solid fa-trophy text-emerald-400"></i>
             <span>Won / Success (${totalWon})</span>
           </button>
+          <button onclick="setSubTab('notif')" id="subtab-notif" class="subtab-btn px-4 py-2 rounded-xl text-xs font-semibold ${activeSubTab === 'notif' ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'} transition flex items-center gap-1.5">
+            <i class="fa-solid fa-bell text-amber-400"></i>
+            <span>🔔 Notifications (${notifCount})</span>
+          </button>
         `;
       }
 
-      applyFilters();
+      if (activeSubTab === 'notif') {
+        loadNotificationsData();
+      } else {
+        applyFilters();
+      }
     }
 
     function setSubTab(subtab) {
@@ -670,10 +779,26 @@
         activeEl.classList.add(activeColorClass, 'text-white');
         activeEl.classList.remove('bg-slate-800', 'text-slate-400');
       }
-      applyFilters();
+
+      const itemsGrid = document.getElementById('items-grid');
+      const notifContainer = document.getElementById('notifications-container');
+      const filtersContainer = document.getElementById('filters-container');
+
+      if (subtab === 'notif') {
+        itemsGrid.classList.add('hidden');
+        notifContainer.classList.remove('hidden');
+        filtersContainer.classList.add('hidden');
+        loadNotificationsData();
+      } else {
+        itemsGrid.classList.remove('hidden');
+        notifContainer.classList.add('hidden');
+        filtersContainer.classList.remove('hidden');
+        applyFilters();
+      }
     }
 
     function applyFilters() {
+      if (activeSubTab === 'notif') return;
       const q = (document.getElementById('search-input').value || '').toLowerCase();
       currentFilterSource = document.getElementById('filter-source').value;
 
@@ -829,6 +954,84 @@
           </div>
         `;
       }).join('');
+    }
+
+    function renderNotificationsView() {
+      document.getElementById('stat-pesta').innerText = notifStats.pesta_points || '0';
+      document.getElementById('stat-worker').innerText = notifStats.worker_points || '211';
+      document.getElementById('stat-affiliate').innerText = notifStats.affiliate_points || '0';
+      document.getElementById('stat-balance').innerText = notifStats.balance || 'Rp 0';
+
+      const feedList = document.getElementById('notif-feed-list');
+      if (allNotifications.length === 0) {
+        feedList.innerHTML = `
+          <div class="py-12 text-center text-slate-500">
+            <i class="fa-solid fa-bell-slash text-2xl mb-2"></i>
+            <p class="text-xs">No notifications recorded yet. Click "Sync Notif Now" to pull fresh notifications.</p>
+          </div>
+        `;
+        return;
+      }
+
+      feedList.innerHTML = allNotifications.map(n => {
+        let typeBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">System</span>`;
+        let iconBg = 'bg-slate-800 text-slate-400';
+        let iconClass = 'fa-bell';
+
+        if (n.notif_type === 'winner_chosen') {
+          typeBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Winner Chosen</span>`;
+          iconBg = 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+          iconClass = 'fa-trophy';
+        } else if (n.notif_type === 'autocancel') {
+          typeBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">Auto Cancelled</span>`;
+          iconBg = 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+          iconClass = 'fa-hourglass-end';
+        }
+
+        const avatarSrc = n.avatar || 'https://cdn.projects.co.id/upload/usr561611/20141107545caba002e77-thumb.jpg';
+
+        return `
+          <div class="bg-slate-950/80 border border-slate-800/80 hover:border-slate-700 p-4 rounded-2xl flex items-start gap-3.5 transition">
+            <img src="${avatarSrc}" alt="${n.sender}" class="w-9 h-9 rounded-full object-cover border border-slate-700 shrink-0 mt-0.5" onerror="this.src='https://projects.co.id/favicon.ico'">
+            <div class="flex-1 space-y-1">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold text-teal-400">${n.sender || 'System'}</span>
+                  <span class="text-[11px] text-slate-500 font-mono">${n.notif_datetime || ''}</span>
+                </div>
+                ${typeBadge}
+              </div>
+              <div class="text-xs text-slate-300 leading-relaxed [&_a]:text-amber-400 [&_a]:hover:underline [&_a]:font-semibold">
+                ${n.content_html || n.content_text}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function syncNotificationsNow() {
+      const btn = document.getElementById('btn-sync-notifs');
+      btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Syncing...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/notifications/sync', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          allNotifications = data.notifications || [];
+          if (data.stats) notifStats = data.stats;
+          renderNotificationsView();
+          alert(`Notifikasi Projects.co.id berhasil disinkronkan (${data.count} notifikasi)!`);
+        } else {
+          alert('Gagal sync notifikasi: ' + (data.error || 'Unknown error'));
+        }
+      } catch (err) {
+        alert('Sync error: ' + err.message);
+      } finally {
+        btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i><span>Sync Notif Now</span>';
+        btn.disabled = false;
+      }
     }
 
     async function toggleBidSuccess(id, nextState) {
@@ -1196,8 +1399,9 @@
       }
     }
 
-    // Auto poll updates every 30s
+    // Auto poll updates
     loadData();
+    loadNotificationsData();
     loadAutoBidBadge();
     setInterval(loadData, 30000);
   </script>
