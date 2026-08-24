@@ -31,7 +31,7 @@ async function scrapeProjectsCoIdAccount() {
     const page = await context.newPage();
 
     // 1. Login if needed
-    await page.goto('https://projects.co.id/public/home/login', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto('https://projects.co.id/public/home/login', { waitUntil: 'domcontentloaded', timeout: 35000 });
     await page.waitForTimeout(1500);
 
     const userField = await page.$('#LoginActivity__user_name');
@@ -39,14 +39,14 @@ async function scrapeProjectsCoIdAccount() {
       await userField.fill(username);
       await page.fill('#LoginActivity__password', password);
       await Promise.all([
-        page.waitForURL('https://projects.co.id/**', { timeout: 20000 }).catch(() => {}),
+        page.waitForURL('https://projects.co.id/**', { timeout: 25000 }).catch(() => {}),
         page.click('button[type="submit"]')
       ]);
       await page.waitForTimeout(2000);
     }
 
     // 2. Navigate to user home / notifications
-    await page.goto('https://projects.co.id/user/home', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto('https://projects.co.id/user/home', { waitUntil: 'domcontentloaded', timeout: 35000 });
     await page.waitForTimeout(2500);
 
     const extracted = await page.evaluate(() => {
@@ -83,24 +83,34 @@ async function scrapeProjectsCoIdAccount() {
       const chatItems = document.querySelectorAll('ul.chats > li');
       chatItems.forEach((li, idx) => {
         const avatar = li.querySelector('img.avatar')?.getAttribute('src') || '';
-        const name = li.querySelector('.name')?.innerText?.trim() || 'System';
-        const datetime = li.querySelector('.datetime')?.innerText?.trim() || '';
+        const sender = li.querySelector('.name')?.innerText?.trim() || 'System';
+        const notif_datetime = li.querySelector('.datetime')?.innerText?.trim() || '';
         
         // Clean inner text and body html
         const bodyEl = li.querySelector('.body, .message');
-        let bodyHtml = bodyEl ? bodyEl.innerHTML : li.innerHTML;
+        let content_html = bodyEl ? bodyEl.innerHTML : li.innerHTML;
         
-        // Strip out any intrusive ad tags / google-anno svgs if any
+        // Clean unwanted tags
         const temp = document.createElement('div');
-        temp.innerHTML = bodyHtml;
-        temp.querySelectorAll('.google-anno, svg').forEach(s => s.remove());
-        bodyHtml = temp.innerHTML.trim();
+        temp.innerHTML = content_html;
+        temp.querySelectorAll('.google-anno, svg, script, style').forEach(s => s.remove());
+        
+        // Ensure relative URLs are absolute
+        temp.querySelectorAll('a').forEach(a => {
+          const href = a.getAttribute('href');
+          if (href && href.startsWith('/')) {
+            a.setAttribute('href', 'https://projects.co.id' + href);
+          }
+          a.setAttribute('target', '_blank');
+          a.setAttribute('rel', 'noopener noreferrer');
+        });
 
-        const text = li.innerText.trim();
+        content_html = temp.innerHTML.trim();
+        const content_text = li.innerText.trim();
 
-        // Extract key links (project link, owner link, etc)
+        // Extract key links
         const links = [];
-        li.querySelectorAll('a').forEach(a => {
+        temp.querySelectorAll('a').forEach(a => {
           const href = a.getAttribute('href');
           const aText = a.innerText.trim();
           if (href && href !== '#' && !href.startsWith('javascript:')) {
@@ -109,24 +119,24 @@ async function scrapeProjectsCoIdAccount() {
         });
 
         // Determine notification type
-        let notifType = 'system';
-        if (text.includes('memilih bid') || text.includes('sebagai pemenang')) {
-          notifType = 'winner_chosen';
-        } else if (text.includes('autocancel') || text.includes('terlewati')) {
-          notifType = 'autocancel';
-        } else if (text.includes('pesan') || text.includes('message')) {
-          notifType = 'message';
+        let notif_type = 'system';
+        if (content_text.includes('memilih bid') || content_text.includes('sebagai pemenang')) {
+          notif_type = 'winner_chosen';
+        } else if (content_text.includes('autocancel') || content_text.includes('terlewati')) {
+          notif_type = 'autocancel';
+        } else if (content_text.includes('pesan') || content_text.includes('message')) {
+          notif_type = 'message';
         }
 
         notifs.push({
-          raw_id: `${name}_${datetime}_${idx}`,
+          raw_id: `${sender}_${notif_datetime}_${idx}`,
           avatar,
-          name,
-          datetime,
-          text,
-          bodyHtml,
-          notifType,
-          links: JSON.stringify(links)
+          sender,
+          notif_datetime,
+          content_text,
+          content_html,
+          notif_type,
+          links_json: JSON.stringify(links)
         });
       });
 
@@ -158,12 +168,12 @@ async function scrapeProjectsCoIdAccount() {
         insertNotif.run(
           n.raw_id,
           n.avatar,
-          n.name,
-          n.datetime,
-          n.text,
-          n.bodyHtml,
-          n.notifType,
-          n.links
+          n.sender,
+          n.notif_datetime,
+          n.content_text,
+          n.content_html,
+          n.notif_type,
+          n.links_json
         );
       }
     });
