@@ -7,24 +7,54 @@ const { getSetting } = require('./db');
 const { generateCoverLetter, solveCaptchaWithVision, classifyProjectForAutoBid } = require('./aiService');
 
 /**
- * Helper to extract maximum budget number from string or attribute
+ * Helper to extract maximum published budget number from string
  */
-function extractMaxBudget(budgetStr, maxAttrVal) {
-  if (maxAttrVal) {
-    const parsed = parseInt(maxAttrVal, 10);
-    if (!isNaN(parsed) && parsed > 0) return parsed;
-  }
-  if (!budgetStr) return 1000000;
+function parsePublishedMaxBudget(budgetStr) {
+  if (!budgetStr) return 0;
   
-  const parts = budgetStr.split(/[-–—]|sampai|to/i);
-  let highest = 0;
+  const clean = budgetStr.replace(/idr|rp/gi, '').trim();
+  const parts = clean.split(/[-–—~]|sampai|s\/d|s\.d|to/i);
+  
+  let maxVal = 0;
   for (const part of parts) {
-    const cleanNum = parseInt(part.replace(/[^0-9]/g, ''), 10);
-    if (!isNaN(cleanNum) && cleanNum > highest) {
-      highest = cleanNum;
+    let mult = 1;
+    if (/jt|juta|million/i.test(part)) mult = 1000000;
+    else if (/rb|ribu|k/i.test(part)) mult = 1000;
+    
+    const rawDigits = parseInt(part.replace(/[^0-9]/g, ''), 10);
+    if (!isNaN(rawDigits) && rawDigits > 0) {
+      let num = rawDigits;
+      if (mult > 1 && num < 10000) {
+        num = num * mult;
+      }
+      if (num > maxVal) {
+        maxVal = num;
+      }
     }
   }
-  return highest > 0 ? highest : 1000000;
+  return maxVal;
+}
+
+/**
+ * Calculate final bid amount based on published budget max
+ */
+function calculateBidAmount(budgetSalary, minAttr, maxAttr) {
+  let targetAmount = parsePublishedMaxBudget(budgetSalary);
+  
+  // Default fallback if not found
+  if (!targetAmount || targetAmount <= 0) {
+    targetAmount = 1000000;
+  }
+
+  // Safety clamps based on HTML form constraints
+  if (minAttr && parseInt(minAttr, 10) > 0) {
+    targetAmount = Math.max(targetAmount, parseInt(minAttr, 10));
+  }
+  if (maxAttr && parseInt(maxAttr, 10) > 0) {
+    targetAmount = Math.min(targetAmount, parseInt(maxAttr, 10));
+  }
+
+  return targetAmount;
 }
 
 /**
@@ -72,27 +102,19 @@ async function applyProjectsCoId(page, item, profile, coverLetter, log) {
     throw new Error('Could not find bid form on Projects.co.id');
   }
 
-  // 3. Fill Bid Amount (Set to Maximum Publish Budget)
+  // 3. Fill Bid Amount (Set strictly to Maximum Published Budget)
   const amountInput = await page.$('#bid__amount');
   let finalBidAmount = '1000000';
   if (amountInput) {
     const maxVal = await amountInput.getAttribute('max');
     const minVal = await amountInput.getAttribute('min');
     
-    let bidAmount = extractMaxBudget(item.budget_salary, maxVal);
-    
-    // Safety check: ensure within input bounds if present
-    if (maxVal && parseInt(maxVal, 10) > 0) {
-      bidAmount = Math.min(bidAmount, parseInt(maxVal, 10));
-    }
-    if (minVal && parseInt(minVal, 10) > 0) {
-      bidAmount = Math.max(bidAmount, parseInt(minVal, 10));
-    }
+    const bidAmount = calculateBidAmount(item.budget_salary, minVal, maxVal);
 
     finalBidAmount = String(bidAmount);
     await amountInput.click({ clickCount: 3 });
     await amountInput.fill(String(bidAmount));
-    log(`[Projects.co.id] Set bid amount to MAX published budget: Rp ${bidAmount.toLocaleString('id-ID')}`);
+    log(`[Projects.co.id] Set bid amount to MAX published budget: Rp ${bidAmount.toLocaleString('id-ID')} (Published: ${item.budget_salary || 'N/A'})`);
   }
 
   // 4. Fill Proposal Message via Summernote API
