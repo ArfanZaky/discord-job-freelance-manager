@@ -1,8 +1,8 @@
-import { chromium } from 'playwright-extra';
-import stealthPlugin from 'puppeteer-extra-plugin-stealth';
-import { getDb } from './db.js';
-import fs from 'fs';
-import { execSync } from 'child_process';
+const { chromium } = require('playwright-extra');
+const stealthPlugin = require('puppeteer-extra-plugin-stealth');
+const db = require('./db');
+const fs = require('fs');
+const { execSync } = require('child_process');
 
 chromium.use(stealthPlugin());
 
@@ -20,9 +20,8 @@ function ensurePlaywrightBrowser() {
   }
 }
 
-export async function syncProjectsCoIdAccount() {
-  const db = getDb();
-  const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get() || {};
+async function syncProjectsCoIdAccount() {
+  const settings = db.getAllSettings();
   const username = settings.projectscoid_user || 'AzakyHifdillah';
   const password = settings.projectscoid_pass || '456321987Azaky';
 
@@ -68,13 +67,6 @@ export async function syncProjectsCoIdAccount() {
     await page.goto('https://projects.co.id/user/home', { waitUntil: 'networkidle', timeout: 35000 });
 
     const stats = await page.evaluate(() => {
-      const getText = (selector) => {
-        const el = document.querySelector(selector);
-        return el ? el.innerText.trim() : '0';
-      };
-
-      const numbers = Array.from(document.querySelectorAll('.panel-body, .widget, .card, h2, h3, .number, .tile-stats, .huge')).map(e => e.innerText.trim());
-      
       let pesta = '0';
       let worker = '211';
       let affiliate = '0';
@@ -170,11 +162,8 @@ export async function syncProjectsCoIdAccount() {
       }
     })();
 
-    db.prepare(`
-      UPDATE settings 
-      SET projectscoid_stats = ?, last_projectscoid_sync = ?
-      WHERE id = 1
-    `).run(JSON.stringify(stats), new Date().toISOString());
+    db.setSetting('projectscoid_stats', JSON.stringify(stats));
+    db.setSetting('last_projectscoid_sync', new Date().toISOString());
 
     return {
       success: true,
@@ -194,3 +183,7 @@ export async function syncProjectsCoIdAccount() {
     }
   }
 }
+
+module.exports = {
+  syncProjectsCoIdAccount
+};

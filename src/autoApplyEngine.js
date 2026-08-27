@@ -1,18 +1,24 @@
-import { chromium } from 'playwright-extra';
-import stealthPlugin from 'puppeteer-extra-plugin-stealth';
-import { getDb } from './db.js';
-import { generateProposal, solveCaptchaWithVision } from './aiService.js';
-import fs from 'fs';
-import { execSync } from 'child_process';
+const { chromium } = require('playwright-extra');
+const stealth = require('puppeteer-extra-plugin-stealth')();
+chromium.use(stealth);
 
-chromium.use(stealthPlugin());
+const fs = require('fs');
+const { execSync } = require('child_process');
 
+const db = require('./db');
+const { getSetting } = require('./db');
+const { generateCoverLetter, solveCaptchaWithVision, classifyProjectForAutoBid } = require('./aiService');
+
+/**
+ * Auto-healing: Ensure Playwright browser binaries exist before launch.
+ * If missing (e.g. wiped by disk cleanup or server reboot), auto-install on the fly.
+ */
 function ensurePlaywrightBrowser() {
   const cachePath = '/root/.cache/ms-playwright';
-  const hasShell = fs.existsSync(cachePath) && fs.readdirSync(cachePath).some(dir => dir.startsWith('chromium_headless_shell'));
+  const hasShell = fs.existsSync(cachePath) && fs.readdirSync(cachePath).some(dir => dir.startsWith('chromium_headless_shell') || dir.startsWith('chromium-'));
   if (!hasShell) {
     try {
-      console.log('[Automation] Playwright browser not found. Auto-installing chromium...');
+      console.log('[Automation] Playwright browser executable not found. Auto-installing chromium...');
       execSync('npx playwright install chromium', { stdio: 'inherit' });
       console.log('[Automation] Playwright browser installed successfully.');
     } catch (e) {
@@ -21,268 +27,422 @@ function ensurePlaywrightBrowser() {
   }
 }
 
-export async function executeAutoApply(job, customProposal = null) {
-  const db = getDb();
-  const startTime = new Date();
-  const auditLogs = [];
-
-  const log = (msg) => {
-    const time = new Date().toISOString();
-    const entry = `[${time}] ${msg}`;
-    auditLogs.push(entry);
-    console.log(entry);
-  };
-
-  db.prepare(`UPDATE jobs SET application_status = 'APPLYING' WHERE id = ?`).run(job.id);
-
-  let browser = null;
-  let success = false;
-  let errorMessage = null;
-
-  try {
-    const targetUrl = job.apply_url || job.url;
-    log(`Target URL: ${targetUrl}`);
-
-    const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get() || {};
-    const candidate = db.prepare('SELECT * FROM candidate_profile WHERE id = 1').get() || {};
-
-    let proposalText = customProposal;
-    if (!proposalText) {
-      log('Generating AI proposal using candidate profile...');
-      proposalText = await generateProposal(job, candidate);
-      log('Proposal successfully generated.');
+/**
+ * Helper to extract maximum published budget number from string
+ */
+function parsePublishedMaxBudget(budgetStr) {
+  if (!budgetStr) return 0;
+  
+  const clean = budgetStr.replace(/idr|rp/gi, '').trim();
+  const parts = clean.split(/[-–—~]|sampai|s\/d|s\.d|to/i);
+  
+  let maxVal = 0;
+  for (const part of parts) {
+    let mult = 1;
+    if (/jt|juta|million/i.test(part)) mult = 1000000;
+    else if (/rb|ribu|k/i.test(part)) mult = 1000;
+    
+    const rawDigits = parseInt(part.replace(/[^0-9]/g, ''), 10);
+    if (!isNaN(rawDigits) && rawDigits > 0) {
+      let num = rawDigits;
+      if (mult > 1 && num < 10000) {
+        num = num * mult;
+      }
+      if (num > maxVal) {
+        maxVal = num;
+      }
     }
+  }
+  return maxVal;
+}
 
-    if (targetUrl && (targetUrl.includes('projects.co.id') || targetUrl.includes('browse_projects'))) {
-      ensurePlaywrightBrowser();
-      log(`Launching browser with stealth mode...`);
-      browser = await chromium.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--disable-gpu'
-        ]
-      });
+/**
+ * Calculate final bid amount based on published budget max
+ */
+function calculateBidAmount(budgetSalary, minAttr, maxAttr) {
+  let targetAmount = parsePublishedMaxBudget(budgetSalary);
+  
+  // Default fallback if not found
+  if (!targetAmount || targetAmount <= 0) {
+    targetAmount = 1000000;
+  }
 
-      const context = await browser.newContext({
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        viewport: { width: 1280, height: 800 }
-      });
+  // Safety clamps based on HTML form constraints
+  if (minAttr && parseInt(minAttr, 10) > 0) {
+    targetAmount = Math.max(targetAmount, parseInt(minAttr, 10));
+  }
+  if (maxAttr && parseInt(maxAttr, 10) > 0) {
+    targetAmount = Math.min(targetAmount, parseInt(maxAttr, 10));
+  }
 
-      const page = await context.newPage();
+  return targetAmount;
+}
 
-      const pUser = settings.projectscoid_user || 'AzakyHifdillah';
-      const pPass = settings.projectscoid_pass || '456321987Azaky';
+/**
+ * Handle automated bidding specifically for Projects.co.id
+ */
+async function applyProjectsCoId(page, item, profile, coverLetter, log) {
+  const username = getSetting('projectscoid_user', 'AzakyHifdillah');
+  const password = getSetting('projectscoid_pass', '456321987Azaky');
 
-      log(`[Projects.co.id] Authenticating session for user: ${pUser}...`);
-      await page.goto('https://projects.co.id/public/home/login', { waitUntil: 'networkidle', timeout: 30000 });
+  log(`[Projects.co.id] Authenticating session for user: ${username}...`);
+  
+  // 1. Visit Login Page
+  await page.goto('https://projects.co.id/public/home/login', { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForTimeout(2000);
+  
+  const userField = await page.$('#LoginActivity__user_name');
+  if (userField) {
+    await userField.fill(username);
+    await page.fill('#LoginActivity__password', password);
+    await Promise.all([
+      page.waitForURL('https://projects.co.id/**', { timeout: 15000 }).catch(() => {}),
+      page.click('button[type="submit"]')
+    ]);
+    await page.waitForTimeout(3000);
+    log(`[Projects.co.id] Logged in successfully. Current URL: ${page.url()}`);
+  }
 
-      const loginFormExists = await page.$('#user_login');
-      if (loginFormExists) {
-        await page.fill('input[name="user[username]"], #user_login', pUser);
-        await page.fill('input[name="user[password]"], #user_password', pPass);
-        await Promise.all([
-          page.click('button[type="submit"], input[type="submit"], .btn-primary'),
-          page.waitForNavigation({ waitUntil: 'networkidle', timeout: 25000 }).catch(() => {})
-        ]);
-        log(`[Projects.co.id] Login submitted.`);
-      }
+  // 2. Navigate directly to Place New Bid page
+  let bidUrl = item.url;
+  if (!bidUrl.includes('/place_new_bid/')) {
+    bidUrl = bidUrl.replace('/view/', '/place_new_bid/');
+  }
 
-      let bidUrl = targetUrl;
-      if (bidUrl.includes('/view/')) {
-        bidUrl = bidUrl.replace('/view/', '/place_new_bid/');
-      } else if (!bidUrl.includes('/place_new_bid/')) {
-        const match = bidUrl.match(/browse_projects\/([^\/]+)\/([^\/]+)/);
-        if (match) {
-          bidUrl = `https://projects.co.id/public/browse_projects/place_new_bid/${match[1]}/${match[2]}`;
-        }
-      }
+  log(`[Projects.co.id] Navigating to bid form: ${bidUrl}`);
+  await page.goto(bidUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForTimeout(3000);
 
-      log(`[Projects.co.id] Navigating to bid form: ${bidUrl}`);
-      await page.goto(bidUrl, { waitUntil: 'networkidle', timeout: 30000 });
-
-      const isForbiddenOrClosed = await page.evaluate(() => {
-        const body = document.body.innerText;
-        return body.includes('You are not allowed to place bid') || body.includes('Project is closed') || body.includes('Sudah tidak menerima penawaran');
-      });
-
-      if (isForbiddenOrClosed) {
-        throw new Error('Proyek ini sudah ditutup atau tidak dapat menerima penawaran lagi.');
-      }
-
-      const rawBudgetStr = `${job.budget || ''} ${job.description || ''}`;
-      
-      const parsePublishedMaxBudget = (str) => {
-        if (!str) return null;
-        const matches = str.match(/Rp\s*([\d\.,]+)/gi);
-        if (matches && matches.length > 0) {
-          const numbers = matches.map(m => parseInt(m.replace(/[^\d]/g, ''), 10)).filter(n => !isNaN(n) && n > 0);
-          if (numbers.length > 0) {
-            return Math.max(...numbers);
-          }
-        }
-        return null;
-      };
-
-      const maxFromDescription = parsePublishedMaxBudget(rawBudgetStr);
-
-      const targetAmount = await page.evaluate((maxDesc) => {
-        const amountInput = document.querySelector('input[name="bid[amount]"], #bid__amount');
-        if (!amountInput) return 1000000;
-        
-        const formMax = parseInt(amountInput.getAttribute('max') || '0', 10);
-        const formMin = parseInt(amountInput.getAttribute('min') || '100000', 10);
-
-        let chosen = maxDesc || formMax || formMin || 1000000;
-        if (formMax > 0 && chosen > formMax) chosen = formMax;
-        if (formMin > 0 && chosen < formMin) chosen = formMin;
-        return chosen;
-      }, maxFromDescription);
-
-      log(`[Projects.co.id] Set bid amount: Rp ${targetAmount.toLocaleString('id-ID')} (Published Max: ${maxFromDescription ? 'Rp ' + maxFromDescription.toLocaleString('id-ID') : 'Default/Max'})`);
-      
-      await page.evaluate((amt) => {
-        const amountInput = document.querySelector('input[name="bid[amount]"], #bid__amount');
-        if (amountInput) {
-          amountInput.value = amt;
-          amountInput.dispatchEvent(new Event('input', { bubbles: true }));
-          amountInput.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-      }, targetAmount);
-
-      const formattedHtmlProposal = proposalText.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>');
-      const cleanHtmlProposal = `<p>${formattedHtmlProposal}</p>`;
-
-      await page.evaluate((html) => {
-        const textarea = document.querySelector('textarea[name="bid[message]"], #bid__message');
-        if (textarea) {
-          textarea.value = html;
-          textarea.innerHTML = html;
-          textarea.dispatchEvent(new Event('input', { bubbles: true }));
-          textarea.dispatchEvent(new Event('change', { bubbles: true }));
-          textarea.dispatchEvent(new Event('blur', { bubbles: true }));
-        }
-        
-        try {
-          if (window.jQuery && window.jQuery('#bid__message').length) {
-            if (typeof window.jQuery('#bid__message').summernote === 'function') {
-              window.jQuery('#bid__message').summernote('code', html);
-            }
-          }
-        } catch (e) {}
-
-        const editable = document.querySelector('.note-editable');
-        if (editable) {
-          editable.innerHTML = html;
-          editable.dispatchEvent(new Event('input', { bubbles: true }));
-          editable.dispatchEvent(new Event('keyup', { bubbles: true }));
-          editable.dispatchEvent(new Event('blur', { bubbles: true }));
-        }
-      }, cleanHtmlProposal);
-
-      log(`[Projects.co.id] Injected proposal HTML into Summernote editor & textarea.`);
-
-      const captchaImg = await page.$('img[src*="captcha"], #captcha_image, img.captcha');
-      if (captchaImg) {
-        log(`[Projects.co.id] Captcha image detected. Capturing screenshot...`);
-        const captchaBuffer = await captchaImg.screenshot();
-        const base64Image = captchaBuffer.toString('base64');
-        
-        const captchaClue = await page.evaluate(() => {
-          const clueEl = document.querySelector('#captcha_text, .captcha-text, span.label-info, small.text-muted');
-          return clueEl ? clueEl.innerText.trim() : '';
-        });
-
-        const promptClue = captchaClue ? `Petunjuk soal captcha: "${captchaClue}". Jawablah pertanyaan atau eja teks captcha dengan tepat.` : '';
-        
-        const solvedText = await solveCaptchaWithVision(base64Image, promptClue);
-        const cleanCaptcha = solvedText.replace(/[^a-zA-Z0-9\s]/g, '').trim();
-        log(`[Projects.co.id] Captcha solved by AI: "${cleanCaptcha}" (Clue: "${captchaClue || 'None'}")`);
-
-        await page.evaluate((val) => {
-          const captchaInput = document.querySelector('input[name="bid[captcha]"], #bid__captcha, input[name="captcha"]');
-          if (captchaInput) {
-            captchaInput.value = val;
-            captchaInput.dispatchEvent(new Event('input', { bubbles: true }));
-            captchaInput.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-        }, cleanCaptcha);
-      }
-
-      page.on('dialog', async (dialog) => {
-        log(`[Projects.co.id] Browser dialog appeared: ${dialog.message()}`);
-        await dialog.accept();
-      });
-
-      log(`[Projects.co.id] Submitting proposal via #place_new_bid...`);
-      await Promise.all([
-        page.click('input[type="submit"][name="save"], #place_new_bid, button[type="submit"]'),
-        page.waitForNavigation({ waitUntil: 'networkidle', timeout: 30000 }).catch(() => {})
-      ]);
-
-      const currentUrl = page.url();
-      log(`[Projects.co.id] Post-submit URL: ${currentUrl}`);
-
-      const pageContent = await page.evaluate(() => document.body.innerText);
-      const isSuccess = currentUrl.includes('bid_placed') || currentUrl.includes('my_bids') || pageContent.includes('Bid berhasil') || pageContent.includes('Penawaran berhasil dikirim');
-
-      if (!isSuccess) {
-        const formError = await page.evaluate(() => {
-          const errs = Array.from(document.querySelectorAll('.error, .alert-danger, .has-error, .text-danger, .alert'));
-          return errs.map(e => e.innerText.trim()).filter(Boolean).join(' | ');
-        });
-        if (formError && !formError.includes('sukses') && !formError.includes('berhasil')) {
-          throw new Error(`Gagal mengirim bid: ${formError}`);
-        }
-      }
-
-      success = true;
-      log(`[Projects.co.id] Bid successfully placed & verified on portal!`);
-
-    } else {
-      log(`Generic portal handler. Saving cover letter to database.`);
-      success = true;
+  const bidForm = await page.$('#form_browse_projects_place_new_bid');
+  if (!bidForm) {
+    const pageText = await page.textContent('body');
+    if (/already placed|telah melakukan bid|telah mengajukan penawaran|selesai|closed|telah berakhir/i.test(pageText)) {
+      log(`[Projects.co.id] Notice: Already placed bid or project unavailable.`);
+      return { success: true, message: 'Already bid or closed' };
     }
+    throw new Error('Could not find bid form on Projects.co.id');
+  }
 
-    log('Application routine completed successfully.');
+  // 3. Fill Bid Amount (Set strictly to Maximum Published Budget)
+  const amountInput = await page.$('#bid__amount');
+  let finalBidAmount = '1000000';
+  if (amountInput) {
+    const maxVal = await amountInput.getAttribute('max');
+    const minVal = await amountInput.getAttribute('min');
+    
+    const bidAmount = calculateBidAmount(item.budget_salary, minVal, maxVal);
 
-  } catch (err) {
-    errorMessage = err.message;
-    log(`Error during application automation: ${errorMessage}`);
-    success = false;
-  } finally {
-    if (browser) {
-      await browser.close().catch(() => {});
+    finalBidAmount = String(bidAmount);
+    await amountInput.click({ clickCount: 3 });
+    await amountInput.fill(String(bidAmount));
+    log(`[Projects.co.id] Set bid amount to MAX published budget: Rp ${bidAmount.toLocaleString('id-ID')} (Published: ${item.budget_salary || 'N/A'})`);
+  }
+
+  // 4. Fill Proposal Message via Summernote API
+  const cleanCoverLetter = coverLetter.trim().length > 15 ? coverLetter.trim() : 'Halo, saya berpengalaman dalam website development dan siap mengerjakan proyek ini dengan profesional, rapi, dan tepat waktu.';
+  
+  await page.evaluate((text) => {
+    const wrappedHtml = `<div>${text.replace(/\n/g, '<br>')}</div>`;
+    
+    if (window.jQuery) {
+      if (typeof window.jQuery('#bid__message').code === 'function') {
+        window.jQuery('#bid__message').code(wrappedHtml);
+      } else if (typeof window.jQuery('#bid__message').summernote === 'function') {
+        window.jQuery('#bid__message').summernote('code', wrappedHtml);
+      }
+    }
+    
+    const rawTextarea = document.querySelector('#bid__message');
+    if (rawTextarea) {
+      rawTextarea.value = wrappedHtml;
+    }
+  }, cleanCoverLetter);
+  
+  log(`[Projects.co.id] Injected AI proposal into Summernote editor (${cleanCoverLetter.length} chars).`);
+
+  // 5. Solve Captcha via Vision AI with Clue Text
+  const capImg = await page.$('#captcha, img[src*="captcha"]');
+  if (capImg) {
+    const clueText = await page.$eval('#captcha_text', el => el.innerText.trim()).catch(() => '');
+    log(`[Projects.co.id] Captcha image detected. Site clue: "${clueText}". Capturing screenshot...`);
+    
+    const screenshotBuf = await capImg.screenshot();
+    const base64 = screenshotBuf.toString('base64');
+    
+    const captchaPrompt = `Ini adalah gambar captcha dari Projects.co.id dengan petunjuk: "Tulis nama ${clueText} ini".
+Tolong baca dan pecahkan teks captcha pada gambar tersebut berdasarkan petunjuk di atas. 
+Balas HANYA kata/teks captcha persisnya (lowercase/sesuai yang terbaca), tanpa tanda kutip, tanpa penjelasan lain.`;
+
+    const solvedCaptcha = await solveCaptchaWithVision(base64, captchaPrompt);
+    const cleaned = solvedCaptcha.replace(/[^a-zA-Z0-9 ]/g, '').trim();
+    
+    log(`[Projects.co.id] Captcha solved by AI: "${cleaned}"`);
+    const capInput = await page.$('#bid__captcha');
+    if (capInput) {
+      await capInput.click();
+      await capInput.fill(cleaned);
+      await capInput.dispatchEvent('change');
     }
   }
 
-  const newStatus = success ? 'APPLIED' : 'FAILED';
-  db.prepare(`
-    UPDATE jobs 
-    SET application_status = ?, 
-        applied_at = ?, 
-        application_log = ?, 
-        cover_letter = ?,
-        is_bid_success = CASE WHEN ? = 'APPLIED' THEN 0 ELSE is_bid_success END
-    WHERE id = ?
-  `).run(
-    newStatus,
-    new Date().toISOString(),
-    auditLogs.join('\n'),
-    customProposal || '',
-    newStatus,
-    job.id
-  );
+  // Handle confirmation dialogs
+  page.on('dialog', async dialog => {
+    log(`[Projects.co.id] Dialog popped up: ${dialog.message()}`);
+    await dialog.accept();
+  });
 
-  return {
-    success,
-    status: newStatus,
-    logs: auditLogs,
-    error: errorMessage
-  };
+  // 6. Submit the Bid
+  const submitBtn = await page.$('#place_new_bid');
+  if (submitBtn) {
+    log(`[Projects.co.id] Submitting proposal via #place_new_bid...`);
+    
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'networkidle', timeout: 25000 }).catch(() => {}),
+      submitBtn.click()
+    ]);
+    
+    await page.waitForTimeout(5000);
+
+    const postSubmitUrl = page.url();
+    const postSubmitTitle = await page.title();
+    log(`[Projects.co.id] Post-submit URL: ${postSubmitUrl} | Title: ${postSubmitTitle}`);
+
+    if (postSubmitUrl.includes('bid_placed') || postSubmitTitle.toLowerCase().includes('bid placed') || postSubmitUrl.includes('user/my_bids') || postSubmitUrl.includes('/view/')) {
+      log(`[Projects.co.id] SUCCESS: Bid confirmed placed on Projects.co.id!`);
+    } else {
+      const fieldErrors = await page.$$eval('.has-error .help-block, .error-message', els => 
+        els.map(e => e.innerText.trim()).filter(t => t.length > 0)
+      );
+      
+      if (fieldErrors.length > 0) {
+        throw new Error(`Projects.co.id validation error: ${fieldErrors.join(', ')}`);
+      }
+    }
+  }
+
+  return { success: true, bidAmount: finalBidAmount, message: 'Bid submitted successfully to Projects.co.id' };
 }
+
+/**
+ * Universal auto-apply router
+ */
+async function applyToJob(itemId, customProposal = null) {
+  const item = db.prepare('SELECT * FROM items WHERE id = ?').get(itemId);
+  if (!item) {
+    throw new Error('Item not found');
+  }
+
+  const profile = db.prepare('SELECT * FROM user_profile WHERE id = 1').get();
+
+  db.prepare('UPDATE items SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+    .run('applying', itemId);
+
+  let coverLetter = customProposal || item.ai_cover_letter;
+  if (!coverLetter) {
+    console.log(`[AutoApply] Generating AI proposal for: ${item.title}`);
+    coverLetter = await generateCoverLetter(item, profile);
+    db.prepare('UPDATE items SET ai_cover_letter = ? WHERE id = ?').run(coverLetter, itemId);
+  }
+
+  const logEntries = [];
+  const log = (msg) => {
+    const timestamp = new Date().toISOString();
+    console.log(`[AutoApply][${itemId}] ${msg}`);
+    logEntries.push(`[${timestamp}] ${msg}`);
+  };
+
+  log(`Target URL: ${item.url || 'No URL found'}`);
+
+  if (!item.url) {
+    const failMsg = 'Cannot auto-apply: missing application URL';
+    log(failMsg);
+    db.prepare('UPDATE items SET status = ?, apply_log = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .run('failed', logEntries.join('\n'), itemId);
+    return { success: false, log: logEntries.join('\n'), message: failMsg };
+  }
+
+  let browser;
+  let applyResult = { success: true };
+  try {
+    ensurePlaywrightBrowser();
+    log(`Launching browser with stealth mode...`);
+
+    browser = await chromium.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu'
+      ]
+    });
+
+    const context = await browser.newContext({
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      viewport: { width: 1366, height: 768 },
+      locale: 'id-ID',
+      timezoneId: 'Asia/Jakarta'
+    });
+
+    const page = await context.newPage();
+
+    // Check if target is Projects.co.id
+    if (item.url.includes('projects.co.id') || item.platform_source === 'Projects.co.id') {
+      applyResult = await applyProjectsCoId(page, item, profile, coverLetter, log);
+    } else {
+      // General job application handler
+      log(`Navigating to ${item.url}...`);
+      await page.goto(item.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForTimeout(2000);
+
+      const pageTitle = await page.title();
+      log(`Page loaded: "${pageTitle}"`);
+
+      // Autofill standard form inputs
+      const nameInput = await page.$('input[name*="name" i], input[id*="name" i], input[placeholder*="nama" i], input[placeholder*="name" i]');
+      if (nameInput) await nameInput.fill(profile.full_name);
+
+      const emailInput = await page.$('input[type="email"], input[name*="email" i], input[id*="email" i]');
+      if (emailInput) await emailInput.fill(profile.email);
+
+      const phoneInput = await page.$('input[type="tel"], input[name*="phone" i], input[name*="hp" i], input[id*="phone" i]');
+      if (phoneInput) await phoneInput.fill(profile.phone);
+
+      const descArea = await page.$('textarea[name*="cover" i], textarea[name*="message" i], textarea[name*="proposal" i], textarea');
+      if (descArea) await descArea.fill(coverLetter);
+
+      const linkInput = await page.$('input[name*="linkedin" i], input[placeholder*="linkedin" i]');
+      if (linkInput && profile.linkedin) await linkInput.fill(profile.linkedin);
+
+      const portInput = await page.$('input[name*="portfolio" i], input[name*="github" i], input[placeholder*="portfolio" i]');
+      if (portInput && profile.portfolio) await portInput.fill(profile.portfolio);
+    }
+
+    log(`Application routine completed successfully.`);
+    const finalLog = logEntries.join('\n');
+
+    const bidAmt = applyResult.bidAmount ? `Rp ${parseInt(applyResult.bidAmount).toLocaleString('id-ID')}` : (item.bid_amount || '');
+
+    db.prepare('UPDATE items SET status = ?, bid_amount = ?, apply_log = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .run('applied', bidAmt, finalLog, itemId);
+
+    await browser.close();
+    return { success: true, log: finalLog, coverLetter, bidAmount: bidAmt };
+
+  } catch (err) {
+    if (browser) await browser.close();
+    const errMsg = `Error during application automation: ${err.message}`;
+    log(errMsg);
+    const finalLog = logEntries.join('\n');
+
+    db.prepare('UPDATE items SET status = ?, apply_log = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .run('failed', finalLog, itemId);
+
+    return { success: false, log: finalLog, error: err.message };
+  }
+}
+
+/**
+ * Auto-Bid Pipeline Worker
+ */
+let isAutoBidWorkerRunning = false;
+
+async function runAutoBidRoutine(limit = 3) {
+  if (isAutoBidWorkerRunning) {
+    console.log('[AutoBid Routine] Already running, skipping concurrent run.');
+    return { processed: 0, status: 'already_running' };
+  }
+
+  const enabled = getSetting('autobid_enabled', '0') === '1';
+  if (!enabled) {
+    console.log('[AutoBid Routine] Auto-bid is disabled in settings.');
+    return { processed: 0, status: 'disabled' };
+  }
+
+  isAutoBidWorkerRunning = true;
+  console.log('[AutoBid Routine] Scanning un-evaluated Projects.co.id freelance projects...');
+
+  try {
+    const candidates = db.prepare(`
+      SELECT * FROM items 
+      WHERE (platform_source = 'Projects.co.id' OR url LIKE '%projects.co.id%')
+        AND status IN ('new', 'analyzed')
+        AND auto_bid_evaluated = 0
+      ORDER BY datetime(created_at) DESC
+      LIMIT ?
+    `).all(limit);
+
+    console.log(`[AutoBid Routine] Found ${candidates.length} candidates.`);
+    let processed = 0;
+
+    for (const item of candidates) {
+      console.log(`[AutoBid Routine] Evaluating item [${item.id}] "${item.title}" with AI...`);
+      
+      const classification = await classifyProjectForAutoBid(item);
+      console.log(`[AutoBid Routine] Result: match=${classification.match}, category="${classification.category}", reason="${classification.reason}"`);
+
+      db.prepare(`
+        UPDATE items SET
+          auto_bid_evaluated = 1,
+          auto_bid_matched = ?,
+          auto_bid_category = ?,
+          auto_bid_reason = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(
+        classification.match ? 1 : 0,
+        classification.category,
+        classification.reason,
+        item.id
+      );
+
+      if (classification.match) {
+        console.log(`[AutoBid Routine] MATCHED! Auto-placing bid on "${item.title}"...`);
+        
+        const logRes = db.prepare(`
+          INSERT INTO autobid_logs (item_id, item_title, matched, category, reason, status, details)
+          VALUES (?, ?, 1, ?, ?, 'bidding', 'Triggered auto bid execution')
+        `).run(item.id, item.title, classification.category, classification.reason);
+
+        const result = await applyToJob(item.id);
+        
+        db.prepare(`
+          UPDATE autobid_logs SET
+            status = ?,
+            details = ?
+          WHERE id = ?
+        `).run(
+          result.success ? 'bid_success' : 'bid_failed',
+          result.success ? 'Bid placed successfully' : (result.error || 'Failed'),
+          logRes.lastInsertRowid
+        );
+
+        processed++;
+      } else {
+        console.log(`[AutoBid Routine] SKIPPED: Does not match website bugfix/development criteria.`);
+        db.prepare(`
+          INSERT INTO autobid_logs (item_id, item_title, matched, category, reason, status, details)
+          VALUES (?, ?, 0, ?, ?, 'skipped', 'AI filtered out')
+        `).run(item.id, item.title, classification.category, classification.reason);
+      }
+
+      await new Promise(r => setTimeout(r, 2000));
+    }
+
+    return { processed, totalCandidates: candidates.length, status: 'completed' };
+  } catch (err) {
+    console.error('[AutoBid Routine] Exception occurred:', err);
+    return { error: err.message, status: 'error' };
+  } finally {
+    isAutoBidWorkerRunning = false;
+  }
+}
+
+module.exports = {
+  applyToJob,
+  runAutoBidRoutine,
+  ensurePlaywrightBrowser
+};
