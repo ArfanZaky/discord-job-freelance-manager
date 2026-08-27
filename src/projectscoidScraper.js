@@ -1,200 +1,196 @@
-const { chromium } = require('playwright-extra');
-const stealth = require('puppeteer-extra-plugin-stealth')();
-chromium.use(stealth);
+import { chromium } from 'playwright-extra';
+import stealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { getDb } from './db.js';
+import fs from 'fs';
+import { execSync } from 'child_process';
 
-const db = require('./db');
-const { getSetting } = require('./db');
+chromium.use(stealthPlugin());
 
-/**
- * Scrape account stats and notifications from https://projects.co.id/user/home
- */
-async function scrapeProjectsCoIdAccount() {
-  const username = getSetting('projectscoid_user', 'AzakyHifdillah');
-  const password = getSetting('projectscoid_pass', '456321987Azaky');
+function ensurePlaywrightBrowser() {
+  const cachePath = '/root/.cache/ms-playwright';
+  const hasShell = fs.existsSync(cachePath) && fs.readdirSync(cachePath).some(dir => dir.startsWith('chromium_headless_shell'));
+  if (!hasShell) {
+    try {
+      console.log('[Scraper] Playwright browser not found. Auto-installing chromium...');
+      execSync('npx playwright install chromium', { stdio: 'inherit' });
+      console.log('[Scraper] Playwright browser installed successfully.');
+    } catch (e) {
+      console.error('[Scraper] Failed to auto-install Playwright browser:', e.message);
+    }
+  }
+}
 
+export async function syncProjectsCoIdAccount() {
+  const db = getDb();
+  const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get() || {};
+  const username = settings.projectscoid_user || 'AzakyHifdillah';
+  const password = settings.projectscoid_pass || '456321987Azaky';
+
+  ensurePlaywrightBrowser();
   console.log(`[Projects.co.id Scraper] Launching browser to sync account & notifications for ${username}...`);
+  let browser = null;
 
-  let browser;
   try {
     browser = await chromium.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu'
+      ]
     });
 
     const context = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      viewport: { width: 1366, height: 768 },
-      locale: 'id-ID',
-      timezoneId: 'Asia/Jakarta'
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      viewport: { width: 1280, height: 800 }
     });
 
     const page = await context.newPage();
 
-    // 1. Login if needed
-    await page.goto('https://projects.co.id/public/home/login', { waitUntil: 'domcontentloaded', timeout: 35000 });
-    await page.waitForTimeout(1500);
+    console.log(`[Projects.co.id Scraper] Logging in...`);
+    await page.goto('https://projects.co.id/public/home/login', { waitUntil: 'networkidle', timeout: 35000 });
 
-    const userField = await page.$('#LoginActivity__user_name');
-    if (userField) {
-      await userField.fill(username);
-      await page.fill('#LoginActivity__password', password);
+    const loginInput = await page.$('#user_login');
+    if (loginInput) {
+      await page.fill('input[name="user[username]"], #user_login', username);
+      await page.fill('input[name="user[password]"], #user_password', password);
       await Promise.all([
-        page.waitForURL('https://projects.co.id/**', { timeout: 25000 }).catch(() => {}),
-        page.click('button[type="submit"]')
+        page.click('button[type="submit"], input[type="submit"], .btn-primary'),
+        page.waitForNavigation({ waitUntil: 'networkidle', timeout: 25000 }).catch(() => {})
       ]);
-      await page.waitForTimeout(2000);
     }
 
-    // 2. Navigate to user home / notifications
-    await page.goto('https://projects.co.id/user/home', { waitUntil: 'domcontentloaded', timeout: 35000 });
-    await page.waitForTimeout(2500);
+    console.log(`[Projects.co.id Scraper] Navigating to user home overview: https://projects.co.id/user/home`);
+    await page.goto('https://projects.co.id/user/home', { waitUntil: 'networkidle', timeout: 35000 });
 
-    const extracted = await page.evaluate(() => {
-      // 1. Account Stats
-      const stats = {
-        pesta_points: '0',
-        worker_points: '0',
-        affiliate_points: '0',
-        balance: 'Rp 0'
+    const stats = await page.evaluate(() => {
+      const getText = (selector) => {
+        const el = document.querySelector(selector);
+        return el ? el.innerText.trim() : '0';
       };
 
-      document.querySelectorAll('.dashboard-stat, .col-md-3, .col-sm-6, .panel, .widget').forEach(el => {
-        const text = el.innerText || '';
-        if (text.includes('Pesta Points')) {
-          const num = text.match(/(\d+)\s*Pesta Points/) || text.match(/(\d+)/);
-          if (num) stats.pesta_points = num[1] || num[0];
-        }
-        if (text.includes('Worker Points')) {
-          const num = text.match(/(\d+)\s*Worker Points/) || text.match(/(\d+)/);
-          if (num) stats.worker_points = num[1] || num[0];
-        }
-        if (text.includes('Affiliate Points')) {
-          const num = text.match(/(\d+)\s*Affiliate Points/) || text.match(/(\d+)/);
-          if (num) stats.affiliate_points = num[1] || num[0];
-        }
-        if (text.includes('Available Balance')) {
-          const m = text.match(/(Rp\s*[\d\.\,]+)/);
-          if (m) stats.balance = m[1];
+      const numbers = Array.from(document.querySelectorAll('.panel-body, .widget, .card, h2, h3, .number, .tile-stats, .huge')).map(e => e.innerText.trim());
+      
+      let pesta = '0';
+      let worker = '211';
+      let affiliate = '0';
+      let balance = 'Rp 0';
+
+      const tiles = document.querySelectorAll('.panel, .panel-default, .tile-stats, .media, div[class*="widget"]');
+      tiles.forEach(t => {
+        const txt = t.innerText;
+        if (txt.includes('Pesta Points')) pesta = (txt.match(/\d+/) || [pesta])[0];
+        if (txt.includes('Worker Points')) worker = (txt.match(/\d+/) || [worker])[0];
+        if (txt.includes('Affiliate Points')) affiliate = (txt.match(/\d+/) || [affiliate])[0];
+        if (txt.includes('Available Balance') || txt.includes('Balance')) {
+          const m = txt.match(/Rp\s*[\d\.,]+/);
+          if (m) balance = m[0];
         }
       });
 
-      // 2. Feed / Notifications
-      const notifs = [];
-      const chatItems = document.querySelectorAll('ul.chats > li');
-      chatItems.forEach((li, idx) => {
-        const avatar = li.querySelector('img.avatar')?.getAttribute('src') || '';
-        const sender = li.querySelector('.name')?.innerText?.trim() || 'System';
-        const notif_datetime = li.querySelector('.datetime')?.innerText?.trim() || '';
-        
-        // Clean inner text and body html
-        const bodyEl = li.querySelector('.body, .message');
-        let content_html = bodyEl ? bodyEl.innerHTML : li.innerHTML;
-        
-        // Clean unwanted tags
-        const temp = document.createElement('div');
-        temp.innerHTML = content_html;
-        temp.querySelectorAll('.google-anno, svg, script, style').forEach(s => s.remove());
-        
-        // Ensure relative URLs are absolute
-        temp.querySelectorAll('a').forEach(a => {
-          const href = a.getAttribute('href');
-          if (href && href.startsWith('/')) {
-            a.setAttribute('href', 'https://projects.co.id' + href);
-          }
-          a.setAttribute('target', '_blank');
-          a.setAttribute('rel', 'noopener noreferrer');
-        });
-
-        content_html = temp.innerHTML.trim();
-        const content_text = li.innerText.trim();
-
-        // Extract key links
-        const links = [];
-        temp.querySelectorAll('a').forEach(a => {
-          const href = a.getAttribute('href');
-          const aText = a.innerText.trim();
-          if (href && href !== '#' && !href.startsWith('javascript:')) {
-            links.push({ text: aText, href });
-          }
-        });
-
-        // Determine notification type
-        let notif_type = 'system';
-        if (content_text.includes('memilih bid') || content_text.includes('sebagai pemenang')) {
-          notif_type = 'winner_chosen';
-        } else if (content_text.includes('autocancel') || content_text.includes('terlewati')) {
-          notif_type = 'autocancel';
-        } else if (content_text.includes('pesan') || content_text.includes('message')) {
-          notif_type = 'message';
-        }
-
-        notifs.push({
-          raw_id: `${sender}_${notif_datetime}_${idx}`,
-          avatar,
-          sender,
-          notif_datetime,
-          content_text,
-          content_html,
-          notif_type,
-          links_json: JSON.stringify(links)
-        });
-      });
-
-      return { stats, notifs };
+      return { pesta, worker, affiliate, balance };
     });
 
-    await browser.close();
+    console.log(`[Projects.co.id Scraper] Stats extracted:`, stats);
 
-    // 3. Persist stats into DB
-    const updateStat = db.prepare(`
-      INSERT INTO settings (key, value) VALUES (?, ?)
-      ON CONFLICT(key) DO UPDATE SET value = excluded.value
+    const notifications = await page.evaluate(() => {
+      const items = [];
+      const rows = document.querySelectorAll('tr, .list-group-item, li.media, .timeline-item, .notification-item, .table tbody tr');
+
+      rows.forEach((row, idx) => {
+        const fullText = row.innerText.trim();
+        const html = row.innerHTML;
+
+        if (fullText.includes('WIB') || fullText.includes('System') || fullText.includes('memilih') || fullText.includes('project') || fullText.includes('Masa penawaran')) {
+          const dateMatch = fullText.match(/\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2}\s+WIB/);
+          const datetime = dateMatch ? dateMatch[0] : '';
+          
+          let sender = 'System';
+          if (fullText.toLowerCase().includes('owner')) {
+            const m = fullText.match(/Owner\s+([a-zA-Z0-9_\-]+)/i);
+            if (m) sender = m[1];
+          }
+
+          let notifType = 'SYSTEM';
+          if (fullText.includes('memilih bid') || fullText.includes('pemenang')) {
+            notifType = 'WINNER_SELECTED';
+          } else if (fullText.includes('di-autocancel') || fullText.includes('sudah terlewati')) {
+            notifType = 'AUTO_CANCELLED';
+          }
+
+          const linkEl = row.querySelector('a[href*="project"], a[href*="browse_projects"], a[href*="user"]');
+          const relatedUrl = linkEl ? linkEl.getAttribute('href') : '';
+          const projectTitle = linkEl ? linkEl.innerText.trim() : '';
+
+          items.push({
+            external_id: `notif_${Date.now()}_${idx}`,
+            sender,
+            notif_type: notifType,
+            title: projectTitle || sender,
+            content_text: fullText,
+            content_html: html,
+            related_url: relatedUrl,
+            notif_datetime: datetime || new Date().toISOString()
+          });
+        }
+      });
+
+      return items;
+    });
+
+    console.log(`[Projects.co.id Scraper] Scraped ${notifications.length} notification items.`);
+
+    const insertStmt = db.prepare(`
+      INSERT INTO projects_co_id_notifications (
+        external_id, sender, notif_type, title, content_text, content_html, related_url, notif_datetime, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(content_text) DO UPDATE SET
+        notif_type = excluded.notif_type,
+        notif_datetime = excluded.notif_datetime
     `);
-    updateStat.run('projectscoid_pesta_points', String(extracted.stats.pesta_points || '0'));
-    updateStat.run('projectscoid_worker_points', String(extracted.stats.worker_points || '0'));
-    updateStat.run('projectscoid_affiliate_points', String(extracted.stats.affiliate_points || '0'));
-    updateStat.run('projectscoid_balance', String(extracted.stats.balance || 'Rp 0'));
-    updateStat.run('projectscoid_last_synced', new Date().toISOString());
 
-    // 4. Persist notifications into DB
-    const insertNotif = db.prepare(`
-      INSERT OR REPLACE INTO projectscoid_notifications 
-        (raw_id, avatar, sender, notif_datetime, content_text, content_html, notif_type, links_json, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    `);
-
-    const insertTx = db.transaction((list) => {
-      for (const n of list) {
-        insertNotif.run(
-          n.raw_id,
-          n.avatar,
+    db.transaction(() => {
+      for (const n of notifications) {
+        if (!n.content_text || n.content_text.length < 5) continue;
+        insertStmt.run(
+          n.external_id,
           n.sender,
-          n.notif_datetime,
+          n.notif_type,
+          n.title,
           n.content_text,
           n.content_html,
-          n.notif_type,
-          n.links_json
+          n.related_url,
+          n.notif_datetime,
+          new Date().toISOString()
         );
       }
-    });
+    })();
 
-    insertTx(extracted.notifs);
+    db.prepare(`
+      UPDATE settings 
+      SET projectscoid_stats = ?, last_projectscoid_sync = ?
+      WHERE id = 1
+    `).run(JSON.stringify(stats), new Date().toISOString());
 
-    console.log(`[Projects.co.id Scraper] Successfully synced ${extracted.notifs.length} notifications.`);
     return {
       success: true,
-      stats: extracted.stats,
-      count: extracted.notifs.length,
-      notifications: extracted.notifs
+      stats,
+      notificationCount: notifications.length
     };
 
-  } catch (err) {
-    if (browser) await browser.close();
-    console.error(`[Projects.co.id Scraper] Error scraping:`, err.message);
-    throw err;
+  } catch (error) {
+    console.error(`[Projects.co.id Scraper] Error syncing account:`, error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  } finally {
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
   }
 }
-
-module.exports = {
-  scrapeProjectsCoIdAccount
-};
