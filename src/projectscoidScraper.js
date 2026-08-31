@@ -1,6 +1,7 @@
 const { chromium } = require('playwright-extra');
 const stealthPlugin = require('puppeteer-extra-plugin-stealth');
 const db = require('./db');
+const { getSetting, setSetting, getAllSettings } = require('./db');
 const fs = require('fs');
 const { execSync } = require('child_process');
 
@@ -20,8 +21,8 @@ function ensurePlaywrightBrowser() {
   }
 }
 
-async function syncProjectsCoIdAccount() {
-  const settings = db.getAllSettings();
+async function scrapeProjectsCoIdAccount() {
+  const settings = getAllSettings();
   const username = settings.projectscoid_user || 'AzakyHifdillah';
   const password = settings.projectscoid_pass || '456321987Azaky';
 
@@ -119,13 +120,12 @@ async function syncProjectsCoIdAccount() {
           const projectTitle = linkEl ? linkEl.innerText.trim() : '';
 
           items.push({
-            external_id: `notif_${Date.now()}_${idx}`,
+            raw_id: `notif_${Date.now()}_${idx}`,
             sender,
             notif_type: notifType,
-            title: projectTitle || sender,
             content_text: fullText,
             content_html: html,
-            related_url: relatedUrl,
+            links_json: JSON.stringify({ related_url: relatedUrl, project_title: projectTitle }),
             notif_datetime: datetime || new Date().toISOString()
           });
         }
@@ -137,10 +137,10 @@ async function syncProjectsCoIdAccount() {
     console.log(`[Projects.co.id Scraper] Scraped ${notifications.length} notification items.`);
 
     const insertStmt = db.prepare(`
-      INSERT INTO projects_co_id_notifications (
-        external_id, sender, notif_type, title, content_text, content_html, related_url, notif_datetime, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(content_text) DO UPDATE SET
+      INSERT INTO projectscoid_notifications (
+        raw_id, sender, notif_type, content_text, content_html, links_json, notif_datetime
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(raw_id) DO UPDATE SET
         notif_type = excluded.notif_type,
         notif_datetime = excluded.notif_datetime
     `);
@@ -149,21 +149,22 @@ async function syncProjectsCoIdAccount() {
       for (const n of notifications) {
         if (!n.content_text || n.content_text.length < 5) continue;
         insertStmt.run(
-          n.external_id,
+          n.raw_id,
           n.sender,
           n.notif_type,
-          n.title,
           n.content_text,
           n.content_html,
-          n.related_url,
-          n.notif_datetime,
-          new Date().toISOString()
+          n.links_json,
+          n.notif_datetime
         );
       }
     })();
 
-    db.setSetting('projectscoid_stats', JSON.stringify(stats));
-    db.setSetting('last_projectscoid_sync', new Date().toISOString());
+    setSetting('projectscoid_pesta_points', stats.pesta || '0');
+    setSetting('projectscoid_worker_points', stats.worker || '211');
+    setSetting('projectscoid_affiliate_points', stats.affiliate || '0');
+    setSetting('projectscoid_balance', stats.balance || 'Rp 0');
+    setSetting('projectscoid_last_synced', new Date().toISOString());
 
     return {
       success: true,
@@ -185,5 +186,6 @@ async function syncProjectsCoIdAccount() {
 }
 
 module.exports = {
-  syncProjectsCoIdAccount
+  scrapeProjectsCoIdAccount,
+  syncProjectsCoIdAccount: scrapeProjectsCoIdAccount
 };
