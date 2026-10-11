@@ -147,6 +147,7 @@ app.post('/api/settings', (req, res) => {
       projectscoid_user,
       projectscoid_pass,
       autobid_enabled,
+      autobid_bid_strategy,
       autobid_custom_prompt,
       autobid_bid_prompt,
       sync_interval_discord,
@@ -167,6 +168,7 @@ app.post('/api/settings', (req, res) => {
     }
 
     if (autobid_enabled !== undefined) setSetting('autobid_enabled', autobid_enabled ? '1' : '0');
+    if (autobid_bid_strategy !== undefined) setSetting('autobid_bid_strategy', autobid_bid_strategy.trim());
     if (autobid_custom_prompt !== undefined) setSetting('autobid_custom_prompt', autobid_custom_prompt.trim());
     if (autobid_bid_prompt !== undefined) setSetting('autobid_bid_prompt', autobid_bid_prompt.trim());
     if (sync_interval_discord !== undefined) setSetting('sync_interval_discord', String(Math.max(1, parseInt(sync_interval_discord) || 5)));

@@ -28,51 +28,84 @@ function ensurePlaywrightBrowser() {
 }
 
 /**
- * Helper to extract maximum published budget number from string
+ * Helper to extract budget numbers (min and max) from published budget string
  */
-function parsePublishedMaxBudget(budgetStr) {
-  if (!budgetStr) return 0;
+function parsePublishedBudget(budgetStr) {
+  if (!budgetStr) return { min: 0, max: 0 };
   
   const clean = budgetStr.replace(/idr|rp/gi, '').trim();
   const parts = clean.split(/[-–—~]|sampai|s\/d|s\.d|to/i);
   
-  let maxVal = 0;
+  const values = [];
   for (const part of parts) {
     let mult = 1;
     if (/jt|juta|million/i.test(part)) mult = 1000000;
     else if (/rb|ribu|k/i.test(part)) mult = 1000;
     
-    const rawDigits = parseInt(part.replace(/[^0-9]/g, ''), 10);
-    if (!isNaN(rawDigits) && rawDigits > 0) {
-      let num = rawDigits;
-      if (mult > 1 && num < 10000) {
-        num = num * mult;
+    let num = 0;
+    if (mult > 1) {
+      const match = part.match(/[\d]+(?:[.,]\d+)?/);
+      if (match) {
+        const floatVal = parseFloat(match[0].replace(',', '.'));
+        if (floatVal < 1000) {
+          num = Math.round(floatVal * mult);
+        } else {
+          num = parseInt(match[0].replace(/[^0-9]/g, ''), 10);
+        }
       }
-      if (num > maxVal) {
-        maxVal = num;
+    } else {
+      const rawDigits = parseInt(part.replace(/[^0-9]/g, ''), 10);
+      if (!isNaN(rawDigits) && rawDigits > 0) {
+        num = rawDigits;
       }
     }
+    
+    if (num > 0) {
+      values.push(num);
+    }
   }
-  return maxVal;
+
+  if (values.length === 0) return { min: 0, max: 0 };
+  return {
+    min: Math.min(...values),
+    max: Math.max(...values)
+  };
 }
 
 /**
- * Calculate final bid amount based on published budget max
+ * Backward compatibility helpers
  */
-function calculateBidAmount(budgetSalary, minAttr, maxAttr) {
-  let targetAmount = parsePublishedMaxBudget(budgetSalary);
-  
-  // Default fallback if not found
-  if (!targetAmount || targetAmount <= 0) {
-    targetAmount = 1000000;
+function parsePublishedMaxBudget(budgetStr) {
+  return parsePublishedBudget(budgetStr).max;
+}
+
+function parsePublishedMinBudget(budgetStr) {
+  return parsePublishedBudget(budgetStr).min;
+}
+
+/**
+ * Calculate final bid amount based on strategy (default: 'min' - paling low)
+ */
+function calculateBidAmount(budgetSalary, minAttr, maxAttr, strategy = 'min') {
+  const parsed = parsePublishedBudget(budgetSalary);
+  const formMin = (minAttr && parseInt(minAttr, 10) > 0) ? parseInt(minAttr, 10) : 0;
+  const formMax = (maxAttr && parseInt(maxAttr, 10) > 0) ? parseInt(maxAttr, 10) : 0;
+
+  let targetAmount;
+  if (strategy === 'max') {
+    targetAmount = parsed.max || formMax || 1000000;
+  } else {
+    // Strategy 'min' (paling low):
+    // Prioritize lowest published budget, fallback to formMin or 500,000
+    targetAmount = parsed.min || formMin || 500000;
   }
 
-  // Safety clamps based on HTML form constraints
-  if (minAttr && parseInt(minAttr, 10) > 0) {
-    targetAmount = Math.max(targetAmount, parseInt(minAttr, 10));
+  // Safety clamps based on HTML form constraints from Projects.co.id
+  if (formMin > 0) {
+    targetAmount = Math.max(targetAmount, formMin);
   }
-  if (maxAttr && parseInt(maxAttr, 10) > 0) {
-    targetAmount = Math.min(targetAmount, parseInt(maxAttr, 10));
+  if (formMax > 0) {
+    targetAmount = Math.min(targetAmount, formMax);
   }
 
   return targetAmount;
@@ -123,19 +156,20 @@ async function applyProjectsCoId(page, item, profile, coverLetter, log) {
     throw new Error('Could not find bid form on Projects.co.id');
   }
 
-  // 3. Fill Bid Amount (Set strictly to Maximum Published Budget)
+  // 3. Fill Bid Amount (Configured strategy: default 'min' - paling low)
+  const bidStrategy = getSetting('autobid_bid_strategy', 'min');
   const amountInput = await page.$('#bid__amount');
-  let finalBidAmount = '1000000';
+  let finalBidAmount = '500000';
   if (amountInput) {
     const maxVal = await amountInput.getAttribute('max');
     const minVal = await amountInput.getAttribute('min');
     
-    const bidAmount = calculateBidAmount(item.budget_salary, minVal, maxVal);
+    const bidAmount = calculateBidAmount(item.budget_salary, minVal, maxVal, bidStrategy);
 
     finalBidAmount = String(bidAmount);
     await amountInput.click({ clickCount: 3 });
     await amountInput.fill(String(bidAmount));
-    log(`[Projects.co.id] Set bid amount to MAX published budget: Rp ${bidAmount.toLocaleString('id-ID')} (Published: ${item.budget_salary || 'N/A'})`);
+    log(`[Projects.co.id] Set bid amount to ${bidStrategy === 'max' ? 'MAX' : 'MIN (paling low)'} budget: Rp ${bidAmount.toLocaleString('id-ID')} (Published: ${item.budget_salary || 'N/A'}, Form bounds: min=${minVal || 'N/A'}, max=${maxVal || 'N/A'})`);
   }
 
   // 4. Fill Proposal Message via Summernote API
@@ -444,5 +478,9 @@ async function runAutoBidRoutine(limit = 3) {
 module.exports = {
   applyToJob,
   runAutoBidRoutine,
-  ensurePlaywrightBrowser
+  ensurePlaywrightBrowser,
+  parsePublishedBudget,
+  parsePublishedMinBudget,
+  parsePublishedMaxBudget,
+  calculateBidAmount
 };

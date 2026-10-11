@@ -539,6 +539,15 @@
               <input id="set-projectscoid-pass" type="password" placeholder="********" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs focus:border-amber-500 focus:outline-none">
             </div>
           </div>
+
+          <div>
+            <label class="block text-slate-300 font-semibold mb-1">Strategi Penawaran Nilai Bid (Bid Amount)</label>
+            <select id="set-autobid-bid-strategy" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs focus:border-amber-500 focus:outline-none">
+              <option value="min">📉 Paling Low / Terendah (Batas Minimum Anggaran Proyek)</option>
+              <option value="max">📈 Paling High / Tertinggi (Batas Maksimum Anggaran Proyek)</option>
+            </select>
+            <p class="text-[11px] text-slate-500 mt-1">Mengatur nilai penawaran otomatis saat auto-bid Projects.co.id (default: Paling Low).</p>
+          </div>
         </div>
 
         <!-- Connection Test Result Alert -->
@@ -1268,6 +1277,7 @@
           }
 
           document.getElementById('set-autobid-enabled').checked = s.autobid_enabled === '1';
+          document.getElementById('set-autobid-bid-strategy').value = s.autobid_bid_strategy || 'min';
           document.getElementById('set-autobid-custom-prompt').value = s.autobid_custom_prompt || '';
           document.getElementById('set-autobid-bid-prompt').value = s.autobid_bid_prompt || '';
         }
@@ -1332,6 +1342,7 @@
         projectscoid_user: document.getElementById('set-projectscoid-user').value,
         projectscoid_pass: document.getElementById('set-projectscoid-pass').value,
         autobid_enabled: document.getElementById('set-autobid-enabled').checked,
+        autobid_bid_strategy: document.getElementById('set-autobid-bid-strategy').value,
         autobid_custom_prompt: document.getElementById('set-autobid-custom-prompt').value,
         autobid_bid_prompt: document.getElementById('set-autobid-bid-prompt').value
       };
